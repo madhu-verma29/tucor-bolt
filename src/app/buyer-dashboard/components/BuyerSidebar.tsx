@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { buyerApi, BuyerProfile } from '@/lib/buyer-api';
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import {
@@ -80,6 +81,8 @@ interface Props {
 }
 
 export default function BuyerSidebar({ collapsed, mobileOpen, onMobileClose, activeSection, onNavigate }: Props) {
+  const [profile,setProfile]=useState<BuyerProfile|null>(null);
+  useEffect(()=>{buyerApi.profile().then(setProfile).catch(()=>{});},[]);
   const groups = [...new Set(navItems.map((n) => n.group))];
 
   const sidebarContent = (
@@ -96,10 +99,10 @@ export default function BuyerSidebar({ collapsed, mobileOpen, onMobileClose, act
               A
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-foreground truncate">Arjun Mehta</div>
-              <div className="text-xs text-muted-foreground truncate">BioFuel India Pvt. Ltd.</div>
+              <div className="text-xs font-bold text-foreground truncate">{profile?.fullName || 'Buyer'}</div>
+              <div className="text-xs text-muted-foreground truncate">{profile?.businessName || ''}</div>
             </div>
-            <span className="badge-active text-xs flex-shrink-0">Verified</span>
+            <span className="badge-active text-xs flex-shrink-0">{profile?.status === 'ACTIVE' ? 'Verified' : 'Pending'}</span>
           </div>
         </div>
       )}
