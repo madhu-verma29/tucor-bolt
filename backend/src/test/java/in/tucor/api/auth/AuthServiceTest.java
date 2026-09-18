@@ -1,0 +1,7 @@
+package in.tucor.api.auth;
+import org.junit.jupiter.api.Test; import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; import java.util.Optional; import static org.junit.jupiter.api.Assertions.assertThrows; import static org.mockito.Mockito.*;
+class AuthServiceTest {
+private AuthService service(UserRepository users){return new AuthService(users,mock(RefreshTokenRepository.class),mock(AuthActionTokenRepository.class),mock(RegistrationProfileRepository.class),new BCryptPasswordEncoder(),mock(JwtService.class),mock(MailService.class),30,15);}
+@Test void blocksAdminSelfRegistration(){UserRepository users=mock(UserRepository.class);AuthService s=service(users);assertThrows(IllegalArgumentException.class,()->s.register(new AuthDtos.Register("admin@tucor.in","Password@123",Role.ADMIN,"B","T","29ABCDE1234F1Z5",null,"A","C","S","560001",null,"N","9876543210")));}
+@Test void rejectsDuplicateEmail(){UserRepository users=mock(UserRepository.class);when(users.findByEmailIgnoreCase("a@b.com")).thenReturn(Optional.of(new User()));AuthService s=service(users);assertThrows(IllegalArgumentException.class,()->s.register(new AuthDtos.Register("a@b.com","Password@123",Role.BUYER,"B","T","29ABCDE1234F1Z5",null,"A","C","S","560001",null,"N","9876543210")));}
+}

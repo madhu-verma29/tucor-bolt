@@ -7,6 +7,8 @@ import { Leaf } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
+import { authApi } from '@/lib/auth-api';
+import { toast } from 'sonner';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -122,11 +124,17 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // BACKEND INTEGRATION: POST /api/auth/forgot-password { email }
-    setTimeout(() => { setLoading(false); setSent(true); }, 1500);
+    try {
+      await authApi.forgotPassword(email);
+      setSent(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to send reset email');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
