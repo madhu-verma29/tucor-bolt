@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, CheckCircle2, Truck, XCircle, MapPin, Calendar, Package } from 'lucide-react';
-import { BuyerOrder } from '@/lib/buyer-mock-data';
+import type { BuyerOrder } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
 // BACKEND INTEGRATION: GET /api/buyer/orders?status=active
