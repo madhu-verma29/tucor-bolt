@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ClipboardList, Package, Bookmark, ShoppingCart, Search, History, TrendingUp, ArrowRight, MapPin, Droplets, CheckCircle2, Clock, Truck, AlertCircle, X, ChevronRight,  } from 'lucide-react';
-import { mockBuyerOrders, mockMarketListings, buyerProfile, UCOMarketListing } from '@/lib/buyer-mock-data';
+import { BuyerOrder, UCOMarketListing } from '@/lib/buyer-mock-data';
+import { buyerApi, BuyerProfile } from '@/lib/buyer-api';
 
 interface Props {
   onNavigate: (id: string) => void;
@@ -36,11 +37,13 @@ const SAVED_LISTING_IDS = ['LST-2026-0041', 'LST-2026-0021', 'LST-2026-0038', 'L
 
 export default function BuyerHomeSection({ onNavigate }: Props) {
   const [savedIds, setSavedIds] = useState<string[]>(SAVED_LISTING_IDS);
+  const [orders,setOrders]=useState<BuyerOrder[]>([]);const [listings,setListings]=useState<UCOMarketListing[]>([]);const [profile,setProfile]=useState<BuyerProfile|null>(null);
+  useEffect(()=>{Promise.all([buyerApi.orders(),buyerApi.listings(),buyerApi.profile()]).then(([o,l,p])=>{setOrders(o);setListings(l);setProfile(p)}).catch(()=>{});},[]);
 
-  const activeOrders = mockBuyerOrders.filter((o) => ACTIVE_STATUSES.includes(o.status));
-  const pendingOrders = mockBuyerOrders.filter((o) => PENDING_STATUSES.includes(o.status));
-  const savedListings = mockMarketListings.filter((l) => savedIds.includes(l.id));
-  const recentSaved = mockMarketListings.filter((l) => savedIds.includes(l.id)).slice(0, 3);
+  const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status));
+  const pendingOrders = orders.filter((o) => PENDING_STATUSES.includes(o.status));
+  const savedListings = listings.filter((l) => savedIds.includes(l.id));
+  const recentSaved = listings.filter((l) => savedIds.includes(l.id)).slice(0, 3);
 
   const totalPendingValue = pendingOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
@@ -132,10 +135,10 @@ export default function BuyerHomeSection({ onNavigate }: Props) {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            Good morning, {buyerProfile.ownerName.split(' ')[0]} 👋
+            Good morning, {profile?.fullName?.split(' ')[0] || 'Buyer'} 👋
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {buyerProfile.businessName} · Procurement Home · Sep 10, 2026
+            {profile?.businessName || ''} · Procurement Home · Sep 10, 2026
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-xl">
