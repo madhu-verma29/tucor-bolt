@@ -21,7 +21,7 @@ import BuyerSustainabilitySection from './BuyerSustainabilitySection';
 import BuyerSettingsSection from './BuyerSettingsSection';
 import NotificationsSection from '@/app/seller-dashboard/components/NotificationsSection';
 import BuyerDocumentsSection from './BuyerDocumentsSection';
-import InvoicesSection from '@/app/seller-dashboard/components/InvoicesSection';
+import BuyerInvoicesSection from './BuyerInvoicesSection';
 import ReportsSection from '@/app/seller-dashboard/components/ReportsSection';
 
 import BuyerVerificationSection from './BuyerVerificationSection';
@@ -72,7 +72,7 @@ export default function BuyerDashboardContent({ activeSection, onNavigate }: Pro
     documents: <BuyerDocumentsSection />,
     pickups: <BuyerPickupsSection />,
     payments: <PaymentMethodSection onNavigate={onNavigate} />,
-    invoices: <InvoicesSection />,
+    invoices: <BuyerInvoicesSection />,
     notifications: <NotificationsSection />,
     reports: <ReportsSection />,
     sustainability: <BuyerSustainabilitySection />,
