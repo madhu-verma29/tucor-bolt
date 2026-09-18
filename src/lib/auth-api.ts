@@ -1,0 +1,9 @@
+export type AuthRole = 'BUYER' | 'SELLER' | 'ADMIN';
+export interface AuthTokens { accessToken:string; refreshToken:string; tokenType:string; expiresInSeconds:number; role:AuthRole; email:string; }
+const API=(process.env.NEXT_PUBLIC_API_BASE_URL||'http://localhost:8080').replace(/\/$/,'');
+async function request<T>(path:string,init:RequestInit={}):Promise<T>{const res=await fetch(API+path,{...init,headers:{'Content-Type':'application/json',...(init.headers||{})}});if(!res.ok){let message='Request failed';try{const b=await res.json();message=b.message||message;}catch{}throw new Error(message);}return res.status===204?undefined as T:res.json();}
+export const authApi={register:(email:string,password:string,role:AuthRole)=>request<AuthTokens>('/api/auth/register',{method:'POST',body:JSON.stringify({email,password,role})}),login:(email:string,password:string,rememberMe:boolean)=>request<AuthTokens>('/api/auth/login',{method:'POST',body:JSON.stringify({email,password,rememberMe})}),refresh:(refreshToken:string)=>request<AuthTokens>('/api/auth/refresh',{method:'POST',body:JSON.stringify({refreshToken})}),logout:(refreshToken:string)=>request<void>('/api/auth/logout',{method:'POST',body:JSON.stringify({refreshToken})})};
+export function saveSession(t:AuthTokens,remember:boolean){const store=remember?localStorage:sessionStorage;const other=remember?sessionStorage:localStorage;other.removeItem('tucor.auth');store.setItem('tucor.auth',JSON.stringify(t));}
+export function clearSession(){localStorage.removeItem('tucor.auth');sessionStorage.removeItem('tucor.auth');}
+export function getSession():AuthTokens|null{if(typeof window==='undefined')return null;const raw=sessionStorage.getItem('tucor.auth')||localStorage.getItem('tucor.auth');if(!raw)return null;try{return JSON.parse(raw)}catch{return null}}
+export function dashboardFor(role:AuthRole){return role==='BUYER'?'/buyer-dashboard':role==='SELLER'?'/seller-dashboard':'/admin-dashboard';}
