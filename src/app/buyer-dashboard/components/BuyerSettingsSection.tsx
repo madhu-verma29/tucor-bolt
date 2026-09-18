@@ -1,7 +1,7 @@
 'use client';
 
 import { buyerApi } from '@/lib/buyer-api';
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Bell, Shield, User, Eye, EyeOff, Save, Smartphone, Mail, CheckCircle2, CreditCard, Undo2, X, AlertCircle } from 'lucide-react';
 
 type Tab = 'account' | 'notifications' | 'security' | 'payment';
@@ -57,9 +57,7 @@ export default function BuyerSettingsSection() {
   const toastTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const initialAccountForm = {
-    ownerName: 'Arjun Mehta',
-    email: 'arjun@biofuelindia.com',
-    phone: '+91 98765 43210',
+    ownerName: '', email: '', phone: '', gstNumber: '', businessName: '', bankName: '', bankAccount: '', ifsc: '', accountType: '',
   };
   const [accountForm, setAccountForm] = useState(initialAccountForm);
   const [savedAccountForm, setSavedAccountForm] = useState(initialAccountForm);
@@ -78,6 +76,7 @@ export default function BuyerSettingsSection() {
 
   const [passwordFields, setPasswordFields] = useState({ current: '', newPwd: '', confirm: '' });
   const [passwordError, setPasswordError] = useState('');
+  useEffect(()=>{Promise.all([buyerApi.settingsAccount(),buyerApi.notificationSettings(),buyerApi.bankAccounts()]).then(([a,n,b])=>{const primary=b.find((x:any)=>x.primary)||b[0];const f={ownerName:a.fullName||'',email:a.email||'',phone:a.phone||'',gstNumber:a.gstNumber||'',businessName:a.businessName||'',bankName:primary?.bankName||'',bankAccount:primary?.accountNumber||'',ifsc:primary?.ifsc||'',accountType:primary?.accountType||''};setAccountForm(f);setSavedAccountForm(f);setNotifSettings(n);setSavedNotifSettings(n)}).catch(()=>{})},[]);
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'account', label: 'Account', icon: User },
@@ -101,27 +100,7 @@ export default function BuyerSettingsSection() {
     setSaveState((prev) => ({ ...prev, [key]: state }));
   };
 
-  const handleAccountSave = () => {
-    setSectionSaveState('account', { status: 'saving' });
-    const prevForm = { ...savedAccountForm };
-    setTimeout(() => {
-      setSavedAccountForm({ ...accountForm });
-      setAccountDirty(false);
-      setSectionSaveState('account', { status: 'saved' });
-      addToast({
-        type: 'success',
-        message: 'Account information saved.',
-        undoAction: () => {
-          setAccountForm(prevForm);
-          setSavedAccountForm(prevForm);
-          setAccountDirty(false);
-          setSectionSaveState('account', { status: 'idle' });
-          addToast({ type: 'info', message: 'Account changes undone.' });
-        },
-      });
-      setTimeout(() => setSectionSaveState('account', { status: 'idle' }), 3000);
-    }, 600);
-  };
+  const handleAccountSave = async () => {setSectionSaveState('account',{status:'saving'});try{await buyerApi.updateSettingsAccount({fullName:accountForm.ownerName,phone:accountForm.phone.replace(/\D/g,'').slice(-10)});setSavedAccountForm({...accountForm});setAccountDirty(false);setSectionSaveState('account',{status:'saved'});addToast({type:'success',message:'Account information saved.'})}catch(e){setSectionSaveState('account',{status:'error'});addToast({type:'error',message:e instanceof Error?e.message:'Save failed'})}};
 
   const handleAccountCancel = () => {
     setAccountForm({ ...savedAccountForm });
@@ -129,39 +108,9 @@ export default function BuyerSettingsSection() {
     addToast({ type: 'info', message: 'Changes discarded.' });
   };
 
-  const handleNotifSave = () => {
-    setSectionSaveState('notif', { status: 'saving' });
-    const prevNotif = { ...savedNotifSettings };
-    setTimeout(() => {
-      setSavedNotifSettings({ ...notifSettings });
-      setSectionSaveState('notif', { status: 'saved' });
-      addToast({
-        type: 'success',
-        message: 'Notification preferences saved.',
-        undoAction: () => {
-          setNotifSettings(prevNotif);
-          setSavedNotifSettings(prevNotif);
-          setSectionSaveState('notif', { status: 'idle' });
-          addToast({ type: 'info', message: 'Notification changes undone.' });
-        },
-      });
-      setTimeout(() => setSectionSaveState('notif', { status: 'idle' }), 3000);
-    }, 600);
-  };
+  const handleNotifSave = async () => {setSectionSaveState('notif',{status:'saving'});try{const n=await buyerApi.updateNotificationSettings(notifSettings);setNotifSettings(n);setSavedNotifSettings(n);setSectionSaveState('notif',{status:'saved'});addToast({type:'success',message:'Notification preferences saved.'})}catch(e){setSectionSaveState('notif',{status:'error'});addToast({type:'error',message:e instanceof Error?e.message:'Save failed'})}};
 
-  const handlePasswordUpdate = () => {
-    setPasswordError('');
-    if (!passwordFields.current) { setPasswordError('Current password is required.'); return; }
-    if (passwordFields.newPwd.length < 8) { setPasswordError('New password must be at least 8 characters.'); return; }
-    if (passwordFields.newPwd !== passwordFields.confirm) { setPasswordError('Passwords do not match.'); return; }
-    setSectionSaveState('password', { status: 'saving' });
-    setTimeout(() => {
-      setPasswordFields({ current: '', newPwd: '', confirm: '' });
-      setSectionSaveState('password', { status: 'saved' });
-      addToast({ type: 'success', message: 'Password updated successfully.' });
-      setTimeout(() => setSectionSaveState('password', { status: 'idle' }), 3000);
-    }, 700);
-  };
+  const handlePasswordUpdate = async () => {setPasswordError('');if(!passwordFields.current){setPasswordError('Current password is required.');return}if(passwordFields.newPwd.length<8){setPasswordError('New password must be at least 8 characters.');return}if(passwordFields.newPwd!==passwordFields.confirm){setPasswordError('Passwords do not match.');return}setSectionSaveState('password',{status:'saving'});try{await buyerApi.changePassword({currentPassword:passwordFields.current,newPassword:passwordFields.newPwd});setPasswordFields({current:'',newPwd:'',confirm:''});setSectionSaveState('password',{status:'saved'});addToast({type:'success',message:'Password updated successfully.'})}catch(e){setSectionSaveState('password',{status:'error'});setPasswordError(e instanceof Error?e.message:'Password update failed')}};
 
   const SaveButton = ({ sectionKey, label, onClick, icon: BtnIcon }: { sectionKey: string; label: string; onClick: () => void; icon: React.ElementType }) => {
     const state = saveState[sectionKey];
@@ -409,10 +358,7 @@ export default function BuyerSettingsSection() {
         <div className="card p-6 flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-foreground text-base">Payment Preferences</h3>
-            <span className="badge-active text-xs flex items-center gap-1">
-              <CheckCircle2 size={11} />
-              Verified
-            </span>
+            <span className="badge-muted text-xs">Linked account</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
