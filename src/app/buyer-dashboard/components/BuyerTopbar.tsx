@@ -6,6 +6,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authApi, clearSession, getSession } from '@/lib/auth-api';
+import { buyerApi, BuyerProfile } from '@/lib/buyer-api';
 import Icon from '@/components/ui/AppIcon';
 
 
@@ -26,10 +27,13 @@ const notifications = [
 
 export default function BuyerTopbar({ onToggleSidebar, onMobileMenuOpen, sidebarCollapsed, onNavigate }: Props) {
   const router = useRouter();
+  const [profile, setProfile] = useState<BuyerProfile | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { buyerApi.profile().then(setProfile).catch(()=>{}); }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -131,15 +135,15 @@ export default function BuyerTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs">
               A
             </div>
-            <span className="hidden sm:block text-sm font-medium text-foreground">Arjun</span>
+            <span className="hidden sm:block text-sm font-medium text-foreground">{profile?.fullName?.split(' ')[0] || 'Buyer'}</span>
             <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-150 ${profileOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {profileOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-52 bg-card border border-border rounded-xl shadow-card-lg z-50 overflow-hidden animate-fade-in-up">
               <div className="px-4 py-3 border-b border-border">
-                <div className="font-semibold text-foreground text-sm">Arjun Mehta</div>
-                <div className="text-xs text-muted-foreground">arjun@biofuelindia.com</div>
+                <div className="font-semibold text-foreground text-sm">{profile?.fullName || 'Buyer'}</div>
+                <div className="text-xs text-muted-foreground">{profile?.email || ''}</div>
               </div>
               {[{ icon: User, label: 'Business Profile', id: 'profile' }, { icon: Settings, label: 'Settings', id: 'settings' }].map((item) => {
                 const Icon = item.icon;
