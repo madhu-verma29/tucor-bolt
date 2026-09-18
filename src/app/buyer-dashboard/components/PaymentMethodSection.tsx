@@ -105,22 +105,12 @@ const PAYMENT_METHODS: PaymentMethod[] = [
   },
 ];
 
-const DEFAULT_ORDER = {
-  oilType: 'Palm',
-  gradeLabel: 'A',
-  volumeLiters: 480,
-  pricePerLiter: 28,
-  oilCost: 13440,
-  transport: 576,
-  platformFee: 202,
-  gst: 2559,
-  total: 16777,
-  deliveryLocation: 'Navi Mumbai Plant — Plot 14, MIDC Industrial Area, Taloja, Navi Mumbai – 410208',
-  pickupDate: '2026-09-18',
-};
-
 export default function PaymentMethodSection({ onNavigate, orderData }: PaymentMethodSectionProps) {
-  const order = orderData ?? DEFAULT_ORDER;
+  const [apiOrder,setApiOrder]=useState<any>(null);
+  useEffect(()=>{if(!orderData)buyerApi.orders().then(o=>setApiOrder(o.find(x=>['Delivered','Payment','Confirmed'].includes(x.status))||null)).catch(()=>{});},[orderData]);
+  const order = orderData ?? (apiOrder ? {oilType:apiOrder.oilType,gradeLabel:apiOrder.gradeLabel,volumeLiters:apiOrder.volumeLiters,pricePerLiter:apiOrder.pricePerLiter,oilCost:apiOrder.volumeLiters*apiOrder.pricePerLiter,transport:Math.round(apiOrder.volumeLiters*1.2),platformFee:Math.round(apiOrder.volumeLiters*apiOrder.pricePerLiter*.015),gst:0,total:apiOrder.totalAmount,deliveryLocation:apiOrder.city,pickupDate:apiOrder.pickupDate||'—'} : null);
+
+  if (!order) return <div className="card p-6 text-sm text-muted-foreground">No payable order is currently available.</div>;
 
   const [selectedMethodId, setSelectedMethodId] = useState<PaymentMethodId>('upi');
   const [useSaved, setUseSaved] = useState<string | null>('saved-2');
@@ -163,7 +153,7 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
     setProcessing(true);
     setProcessingStep(1);
 
-    try { setProcessingStep(2); const orders=await buyerApi.orders(); const payable=orders.find(o=>['Delivered','Payment','Confirmed'].includes(o.status)); if(!payable) throw new Error('No payable order found'); setProcessingStep(3); await buyerApi.createPayment({orderId:payable.id,method:useSaved?'bank':selectedMethodId}); setProcessing(false); onNavigate('payment-confirmation'); } catch(e){setProcessing(false);setPaymentError(e instanceof Error?e.message:'Payment failed');}
+    try { setProcessingStep(2); const orders=await buyerApi.orders(); const payable=apiOrder||orders.find(o=>['Delivered','Payment','Confirmed'].includes(o.status)); if(!payable) throw new Error('No payable order found'); setProcessingStep(3); await buyerApi.createPayment({orderId:payable.id,method:useSaved?'bank':selectedMethodId}); setProcessing(false); onNavigate('payment-confirmation'); } catch(e){setProcessing(false);setPaymentError(e instanceof Error?e.message:'Payment failed');}
   };
 
   const processingMessages = [
@@ -193,7 +183,7 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
       {/* Security badge */}
       <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30 w-fit">
         <Lock size={13} className="text-emerald-600 dark:text-emerald-400" />
-        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">256-bit SSL encrypted · PCI-DSS compliant · Secured by TUCOR</span>
+        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Secure payment processing · Payment provider verification required</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
