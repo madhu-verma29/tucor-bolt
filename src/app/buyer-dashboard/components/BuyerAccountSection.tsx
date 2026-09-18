@@ -403,7 +403,7 @@ function PaymentMethodsTab() {
     <div>
       <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20 mb-6 text-xs text-primary">
         <Info size={13} className="flex-shrink-0" />
-        Payment methods are used for UCO procurement transactions. All payments are processed securely through TUCOR's escrow system.
+        Payment methods are used for UCO procurement transactions. Payment status is confirmed only after the configured payment provider verifies settlement.
       </div>
 
       <SectionCard
@@ -446,10 +446,10 @@ function PaymentMethodsTab() {
                 <div className="text-xs text-muted-foreground mt-0.5">{m.detail}</div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs font-mono text-foreground">
-                    {showFull === m.id ? m.masked.replace(/•/g, '9') : m.masked}
+                    {m.masked}
                   </span>
                   <button
-                    onClick={() => setShowFull(showFull === m.id ? null : m.id)}
+                    onClick={() => setShowFull(showFull === m.id ? null : m.id)} disabled
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showFull === m.id ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -519,7 +519,7 @@ function ContactInfoTab() {
     warehouseHours: '',
   });
 
-  useEffect(()=>{buyerApi.profile().then(p=>setForm(f=>({...f,primaryName:p.fullName||'',primaryPhone:p.phone||'',primaryEmail:p.email||'',warehouseAddress:[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', '),warehouseContact:p.phone||''}))).catch(()=>{});},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(()=>{buyerApi.contacts().then(setForm).catch(()=>{});},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
     <div>
@@ -532,7 +532,7 @@ function ContactInfoTab() {
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5">
                 <X size={13} />Cancel
               </button>
-              <button onClick={() => setEditing(false)} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
+              <button onClick={async()=>{try{setForm(await buyerApi.updateContacts(form));setEditing(false)}catch{}}} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
                 <Save size={13} />Save
               </button>
             </div>
