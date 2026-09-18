@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Search, SlidersHorizontal, MapPin, Droplets, Package, X, ArrowUpDown, ShieldCheck, ChevronDown, ChevronUp, Calendar, TrendingDown, LayoutGrid, List, RefreshCw, Info,  } from 'lucide-react';
-import { mockMarketListings, UCOMarketListing } from '@/lib/buyer-mock-data';
+import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import { buyerApi } from '@/lib/buyer-api';
 
 interface Filters {
   oilType: string[];
@@ -253,6 +254,8 @@ interface Props {
 }
 
 export default function BuyerListingsSection({ onViewListing }: Props) {
+  const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]);
+  useEffect(()=>{buyerApi.listings().then(setMarketListings).catch(()=>setMarketListings([]));},[]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'volume_desc' | 'newest'>('newest');
@@ -305,7 +308,7 @@ export default function BuyerListingsSection({ onViewListing }: Props) {
   );
 
   const filtered = useMemo(() =>
-    mockMarketListings
+    marketListings
       .filter((l) => {
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
@@ -337,9 +340,9 @@ export default function BuyerListingsSection({ onViewListing }: Props) {
     [searchQuery, filters, sortBy]
   );
 
-  const availableCount = mockMarketListings.filter((l) => l.status === 'Available').length;
-  const avgPrice = Math.round(mockMarketListings.reduce((s, l) => s + l.pricePerLiter, 0) / mockMarketListings.length);
-  const totalVolume = mockMarketListings.reduce((s, l) => s + l.volumeLiters, 0);
+  const availableCount = marketListings.filter((l) => l.status === 'Available').length;
+  const avgPrice = Math.round(marketListings.reduce((s, l) => s + l.pricePerLiter, 0) / marketListings.length);
+  const totalVolume = marketListings.reduce((s, l) => s + l.volumeLiters, 0);
 
   return (
     <div className="flex flex-col gap-5">
@@ -367,7 +370,7 @@ export default function BuyerListingsSection({ onViewListing }: Props) {
           </div>
           <div>
             <div className="text-xs text-muted-foreground">Total Listings</div>
-            <div className="text-lg font-bold text-foreground">{mockMarketListings.length}</div>
+            <div className="text-lg font-bold text-foreground">{marketListings.length}</div>
           </div>
         </div>
         <div className="card p-3.5 flex items-center gap-3">
@@ -701,7 +704,7 @@ export default function BuyerListingsSection({ onViewListing }: Props) {
       {/* Results header */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {mockMarketListings.length} listings
+          Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {marketListings.length} listings
         </span>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck size={13} className="text-emerald-500" />
