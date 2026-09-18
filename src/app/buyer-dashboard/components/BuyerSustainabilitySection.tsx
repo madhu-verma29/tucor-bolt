@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Leaf, Droplets, TrendingUp, Award } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import Icon from '@/components/ui/AppIcon';
@@ -27,6 +27,7 @@ const impactMilestones = [
 ];
 
 export default function BuyerSustainabilitySection() {
+  const [apiOrders,setApiOrders]=useState<BuyerOrder[]>([]);useEffect(()=>{buyerApi.orders().then(setApiOrders).catch(()=>setApiOrders([]));},[]);
   const [period, setPeriod] = useState<'3m' | '6m'>('6m');
   const data = period === '3m' ? monthlyImpact.slice(-3) : monthlyImpact;
 
