@@ -72,22 +72,24 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
 function CompanyDetailsTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    businessName: 'BioFuel India Pvt. Ltd.',
-    tradeName: 'BioFuel India',
-    businessType: 'Private Limited Company',
-    category: 'Biodiesel Manufacturer',
-    pan: 'AABCB1234C',
-    cin: 'U24100MH2018PTC312345',
-    yearEstablished: '2018',
-    website: 'www.biofuelindia.in',
-    address: '22, MIDC Industrial Area, Taloja Phase II',
-    city: 'Navi Mumbai',
-    state: 'Maharashtra',
-    pincode: '410208',
+    businessName: '',
+    tradeName: '',
+    businessType: '',
+    category: '',
+    pan: '',
+    cin: '',
+    yearEstablished: '',
+    website: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
     country: 'India',
   });
 
+  useEffect(()=>{buyerApi.profile().then(p=>setForm({businessName:p.businessName||'',tradeName:p.tradeName||'',businessType:p.businessType||'',category:p.category||'',pan:p.pan||'',cin:p.cin||'',yearEstablished:p.yearEstablished||'',website:p.website||'',address:p.address||'',city:p.city||'',state:p.state||'',pincode:p.pincode||'',country:p.country||'India'})).catch(()=>{});},[]);
   const handleChange = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+  const save=async()=>{try{const p=await buyerApi.profile();await buyerApi.updateProfile({...p,...form});setEditing(false)}catch{}};
 
   return (
     <div>
@@ -100,7 +102,7 @@ function CompanyDetailsTab() {
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5">
                 <X size={13} />Cancel
               </button>
-              <button onClick={() => setEditing(false)} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
+              <button onClick={save} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
                 <Save size={13} />Save
               </button>
             </div>
@@ -391,35 +393,10 @@ interface PaymentCard {
 
 function PaymentMethodsTab() {
   const [showFull, setShowFull] = useState<string | null>(null);
-  const [methods] = useState<PaymentCard[]>([
-    {
-      id: 'pm-1',
-      type: 'bank',
-      label: 'HDFC Bank — Current Account',
-      detail: 'IFSC: HDFC0002345 · Branch: Vashi, Navi Mumbai',
-      masked: '•••• •••• 7890',
-      verified: true,
-      primary: true,
-    },
-    {
-      id: 'pm-2',
-      type: 'bank',
-      label: 'ICICI Bank — Current Account',
-      detail: 'IFSC: ICIC0001122 · Branch: Belapur, Navi Mumbai',
-      masked: '•••• •••• 4321',
-      verified: true,
-      primary: false,
-    },
-    {
-      id: 'pm-3',
-      type: 'card',
-      label: 'HDFC Corporate Credit Card',
-      detail: 'Visa · Expires 08/2027',
-      masked: '•••• •••• •••• 5566',
-      verified: false,
-      primary: false,
-    },
-  ]);
+  const [methods,setMethods] = useState<PaymentCard[]>([]);
+  useEffect(()=>{buyerApi.bankAccounts().then(a=>setMethods(a.map((x:any)=>({id:x.id,type:'bank',label:`${x.bankName} — ${x.accountType}`,detail:`IFSC: ${x.ifsc} · Branch: ${x.branch||'—'}`,masked:x.accountNumber,verified:x.verified,primary:x.primary})))).catch(()=>setMethods([]));},[]);
+  const refresh=()=>buyerApi.bankAccounts().then(a=>setMethods(a.map((x:any)=>({id:x.id,type:'bank' as const,label:`${x.bankName} — ${x.accountType}`,detail:`IFSC: ${x.ifsc} · Branch: ${x.branch||'—'}`,masked:x.accountNumber,verified:x.verified,primary:x.primary}))));
+
 
   return (
     <div>
@@ -480,9 +457,9 @@ function PaymentMethodsTab() {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {!m.primary && (
-                  <button className="btn-ghost text-xs px-2.5 py-1.5">Set Primary</button>
+                  <button onClick={()=>buyerApi.setPrimaryBank(m.id).then(refresh)} className="btn-ghost text-xs px-2.5 py-1.5">Set Primary</button>
                 )}
-                <button className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
+                <button onClick={()=>buyerApi.deleteBank(m.id).then(refresh)} className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
                   <Trash2 size={14} />
                 </button>
               </div>
