@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { buyerApi, BuyerProfile } from '@/lib/buyer-api';
 import { Building2, ShieldCheck, CreditCard, Phone, Settings2, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, EyeOff, Upload, ChevronRight, MapPin, Info, RefreshCw, Hash, Landmark, Plus, Trash2, ToggleLeft, ToggleRight, Mail, MessageSquare, Star,  } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -878,7 +879,7 @@ const TABS: Tab[] = [
 ];
 
 export default function BuyerAccountSection() {
-  const [activeTab, setActiveTab] = useState('company');
+  const [activeTab, setActiveTab] = useState('company'); const [profile,setProfile]=useState<BuyerProfile|null>(null);useEffect(()=>{buyerApi.profile().then(setProfile).catch(()=>{});},[]);
 
   const tabContent: Record<string, React.ReactNode> = {
     company: <CompanyDetailsTab />,
@@ -905,17 +906,17 @@ export default function BuyerAccountSection() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-base font-bold text-foreground">BioFuel India Pvt. Ltd.</h3>
+            <h3 className="text-base font-bold text-foreground">{profile?.businessName||'Buyer'}</h3>
             <span className="badge-active text-xs inline-flex items-center gap-1">
               <CheckCircle2 size={11} />Verified Buyer
             </span>
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            GST: 27AABCB1234C1ZW · TUCOR Buyer ID: BYR-2026-0042
+            GST: {profile?.gstNumber||'—'} · TUCOR Buyer ID: {profile?.id||'—'}
           </div>
           <div className="flex items-center gap-4 mt-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">📍 Navi Mumbai, Maharashtra</span>
-            <span className="text-xs text-muted-foreground">🏭 Biodiesel Manufacturer</span>
+            <span className="text-xs text-muted-foreground">📍 {profile ? [profile.city,profile.state].filter(Boolean).join(', ') : '—'}</span>
+            <span className="text-xs text-muted-foreground">🏭 {profile?.category||profile?.businessType||'—'}</span>
             <span className="text-xs text-muted-foreground">📅 Member since Feb 2026</span>
           </div>
         </div>
