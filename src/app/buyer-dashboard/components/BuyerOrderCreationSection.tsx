@@ -20,13 +20,6 @@ import {
 import type { UCOMarketListing } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
-const DELIVERY_LOCATIONS = [
-  { id: 'loc-1', label: 'Navi Mumbai Plant', address: 'Plot 14, MIDC Industrial Area, Taloja, Navi Mumbai – 410208', state: 'Maharashtra' },
-  { id: 'loc-2', label: 'Pune Facility', address: 'Gat No. 112, Chakan Industrial Zone, Pune – 410501', state: 'Maharashtra' },
-  { id: 'loc-3', label: 'Bengaluru Depot', address: 'Sy No. 88, Bommasandra Industrial Area, Bengaluru – 560099', state: 'Karnataka' },
-  { id: 'loc-4', label: 'Custom Address', address: '', state: '' },
-];
-
 const PLATFORM_FEE_RATE = 0.015; // 1.5%
 const GST_RATE = 0.18; // 18%
 const TRANSPORT_RATE_PER_LITER = 1.2; // ₹1.2/L
@@ -59,13 +52,13 @@ type Step = 'select-listing' | 'order-details' | 'review-confirm';
 
 export default function BuyerOrderCreationSection({ onNavigate }: Props) {
   const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]);
-  useEffect(()=>{buyerApi.listings().then(setMarketListings).catch(()=>setMarketListings([]));},[]);
+  const [deliveryLocations,setDeliveryLocations]=useState<{id:string;label:string;address:string;state:string}[]>([{id:'loc-4',label:'Custom Address',address:'',state:''}]); useEffect(()=>{Promise.all([buyerApi.listings(),buyerApi.profile()]).then(([ls,p])=>{setMarketListings(ls);const addr=[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', ');setDeliveryLocations([{id:'registered',label:p.businessName||'Registered Business Address',address:addr,state:p.state||''},{id:'loc-4',label:'Custom Address',address:'',state:''}]);setSelectedLocationId('registered')}).catch(()=>setMarketListings([]));},[]);
   const [step, setStep] = useState<Step>('select-listing');
   const [search, setSearch] = useState('');
   const [selectedListing, setSelectedListing] = useState<UCOMarketListing | null>(null);
   const [volumeInput, setVolumeInput] = useState('');
   const [volumeError, setVolumeError] = useState('');
-  const [selectedLocationId, setSelectedLocationId] = useState('loc-1');
+  const [selectedLocationId, setSelectedLocationId] = useState('registered');
   const [customAddress, setCustomAddress] = useState('');
   const [customCity, setCustomCity] = useState('');
   const [customState, setCustomState] = useState('');
@@ -92,7 +85,7 @@ export default function BuyerOrderCreationSection({ onNavigate }: Props) {
   }, [availableListings, search]);
 
   const volume = parseInt(volumeInput || '0');
-  const selectedLocation = DELIVERY_LOCATIONS.find((l) => l.id === selectedLocationId);
+  const selectedLocation = deliveryLocations.find((l) => l.id === selectedLocationId);
 
   const costs = useMemo(() => {
     if (!selectedListing || !volume) return null;
@@ -424,7 +417,7 @@ export default function BuyerOrderCreationSection({ onNavigate }: Props) {
               <MapPin size={16} className="text-primary" /> Delivery Location
             </h3>
             <div className="flex flex-col gap-2">
-              {DELIVERY_LOCATIONS.map((loc) => (
+              {deliveryLocations.map((loc) => (
                 <label
                   key={`delivery-loc-${loc.id}`}
                   className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${
