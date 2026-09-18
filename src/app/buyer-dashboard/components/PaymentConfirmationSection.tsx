@@ -38,14 +38,15 @@ const TIMELINE_STEPS = [
 
 export default function PaymentConfirmationSection({ onNavigate, orderId, orderData }: PaymentConfirmationProps) {
   const [copiedId, setCopiedId] = useState(false);
-  const [copiedTxn, setCopiedTxn] = useState(false); const [liveOrder,setLiveOrder]=useState<any|null>(null);
+  const [copiedTxn, setCopiedTxn] = useState(false); const [liveOrder,setLiveOrder]=useState<any|null>(null); const [paymentStatus,setPaymentStatus]=useState(orderData?'Pending':'Pending');
 
-  useEffect(()=>{if(orderData)return;Promise.all([buyerApi.payments(),buyerApi.orders(),buyerApi.profile()]).then(([ps,os,p])=>{const pay=orderId?ps.find(x=>x.orderId===orderId):ps[0];if(!pay)return;const o=os.find(x=>x.id===pay.orderId);if(!o)return;const oilCost=o.volumeLiters*o.pricePerLiter,transport=o.volumeLiters*1.2,platformFee=oilCost*0.015,gst=(oilCost+transport+platformFee)*0.18;setLiveOrder({id:o.id,oilType:o.oilType,gradeLabel:o.gradeLabel,volumeLiters:o.volumeLiters,pricePerLiter:o.pricePerLiter,oilCost,transport,platformFee,gst,total:pay.amount,deliveryLocation:[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', '),pickupDate:o.pickupDate||'To be scheduled',paymentMethod:'TUCOR payment',transactionRef:pay.reference||pay.id,paidAt:pay.settledDate||'—'})}).catch(()=>{});},[orderId,orderData]);
+  useEffect(()=>{if(orderData)return;Promise.all([buyerApi.payments(),buyerApi.orders(),buyerApi.profile()]).then(([ps,os,p])=>{const pay=orderId?ps.find(x=>x.orderId===orderId):ps[0];if(!pay)return;setPaymentStatus(pay.status);const o=os.find(x=>x.id===pay.orderId);if(!o)return;const oilCost=o.volumeLiters*o.pricePerLiter,transport=o.volumeLiters*1.2,platformFee=oilCost*0.015,gst=(oilCost+transport+platformFee)*0.18;setLiveOrder({id:o.id,oilType:o.oilType,gradeLabel:o.gradeLabel,volumeLiters:o.volumeLiters,pricePerLiter:o.pricePerLiter,oilCost,transport,platformFee,gst,total:pay.amount,deliveryLocation:[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', '),pickupDate:o.pickupDate||'To be scheduled',paymentMethod:'TUCOR payment',transactionRef:pay.reference||pay.id,paidAt:pay.settledDate||'—'})}).catch(()=>{});},[orderId,orderData]);
   const displayOrderId = orderId ?? liveOrder?.id ?? '—';
   const order = orderData ?? liveOrder;
 
-  if(!order){return <div className="card p-6 text-sm text-muted-foreground">No confirmed payment is available yet.</div>;} 
+  if(!order){return <div className="card p-6 text-sm text-muted-foreground">No payment record is available yet.</div>;} 
 
+  const settled=paymentStatus==='Settled'; const paymentTitle=settled?'Payment Confirmed':'Payment Initiated'; const paymentMessage=settled?'Your payment has been received and verified.':'Your payment request has been recorded and is awaiting provider verification.'; const timelineSteps=TIMELINE_STEPS.map((s,i)=>i===1?{...s,label:settled?'Payment Confirmed':'Payment Pending',description:settled?'Payment received and verified by TUCOR':'Awaiting payment-provider verification',done:settled,current:!settled}:i===2?{...s,current:settled}:s);
   const handleCopy = (text: string, type: 'id' | 'txn') => {
     navigator.clipboard.writeText(text).catch(() => {});
     if (type === 'id') {
@@ -59,11 +60,11 @@ export default function PaymentConfirmationSection({ onNavigate, orderId, orderD
 
   const handleDownloadReceipt = () => {
     const receiptContent = `
-TUCOR PAYMENT RECEIPT
+TUCOR PAYMENT RECORD
 =====================
 Order ID      : ${displayOrderId}
 Transaction   : ${order.transactionRef}
-Paid At       : ${order.paidAt}
+Status        : ${paymentStatus}\nSettled At    : ${settled ? order.paidAt : 'Not settled'}
 Payment Method: ${order.paymentMethod}
 
 ORDER DETAILS
@@ -79,7 +80,7 @@ Transport     : ₹${order.transport.toLocaleString('en-IN')}
 Platform Fee  : ₹${order.platformFee.toLocaleString('en-IN')}
 GST (18%)     : ₹${order.gst.toLocaleString('en-IN')}
 ─────────────────────
-TOTAL PAID    : ₹${order.total.toLocaleString('en-IN')}
+TOTAL AMOUNT  : ₹${order.total.toLocaleString('en-IN')}
 
 PICKUP DETAILS
 --------------
@@ -113,9 +114,9 @@ This is a system-generated receipt. For disputes, quote your Order ID.
           <CheckCircle2 size={30} className="text-success" />
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-foreground">Payment Confirmed!</h1>
+          <h1 className="text-xl font-bold text-foreground">{paymentTitle}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Your payment has been received. TUCOR will review and process your order within 24–48 hours.
+            {paymentMessage}
           </p>
         </div>
         <button
@@ -123,7 +124,7 @@ This is a system-generated receipt. For disputes, quote your Order ID.
           className="btn-secondary flex items-center gap-2 shrink-0 text-sm"
         >
           <Download size={15} />
-          Download Receipt
+          Download Payment Record
         </button>
       </div>
 
@@ -183,12 +184,12 @@ This is a system-generated receipt. For disputes, quote your Order ID.
                 </div>
               ))}
               <div className="flex justify-between items-center pt-3 mt-1">
-                <span className="text-sm font-bold text-foreground">Total Paid</span>
+                <span className="text-sm font-bold text-foreground">{settled ? 'Total Paid' : 'Payment Amount'}</span>
                 <span className="text-lg font-bold text-success">₹{order.total.toLocaleString('en-IN')}</span>
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Clock size={12} />Paid: {order.paidAt}</span>
+              <span className="flex items-center gap-1.5"><Clock size={12} />{settled ? `Settled: ${order.paidAt}` : `Status: ${paymentStatus}`}</span>
               <span className="flex items-center gap-1.5"><Package size={12} />Method: {order.paymentMethod}</span>
             </div>
           </div>
@@ -274,7 +275,7 @@ This is a system-generated receipt. For disputes, quote your Order ID.
               {/* Vertical connector line */}
               <div className="absolute left-[15px] top-4 bottom-4 w-px bg-border" />
               <div className="space-y-0">
-                {TIMELINE_STEPS.map((step, i) => (
+                {timelineSteps.map((step, i) => (
                   <div key={step.label} className="relative flex items-start gap-3 pb-5 last:pb-0">
                     {/* Node */}
                     <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
