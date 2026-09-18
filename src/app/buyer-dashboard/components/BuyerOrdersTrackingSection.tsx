@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Truck, MapPin, Calendar, Package, ChevronDown, Phone, MessageSquare, ShieldCheck, Search, ArrowUpDown, FileText, AlertCircle, CircleDot,  } from 'lucide-react';
-import { BuyerOrder } from '@/lib/buyer-mock-data';
+import type { BuyerOrder } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
 // BACKEND INTEGRATION: GET /api/buyer/orders — returns all orders for authenticated buyer
