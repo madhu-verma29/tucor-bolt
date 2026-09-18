@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, CheckCircle2, Truck, XCircle, MapPin, Calendar, Package } from 'lucide-react';
-import { mockBuyerOrders, BuyerOrder } from '@/lib/buyer-mock-data';
+import { BuyerOrder } from '@/lib/buyer-mock-data';
+import { buyerApi } from '@/lib/buyer-api';
 
 // BACKEND INTEGRATION: GET /api/buyer/orders?status=active
 
@@ -72,9 +73,11 @@ const gradeColors: Record<string, string> = {
 };
 
 export default function ActiveOrdersSection() {
+  const [apiOrders,setApiOrders]=useState<BuyerOrder[]>([]);
+  useEffect(()=>{buyerApi.orders().then(setApiOrders).catch(()=>setApiOrders([]));},[]);
   const [expandedId, setExpandedId] = useState<string | null>('ORD-2026-0201');
 
-  const activeOrders = mockBuyerOrders.filter((o) => ACTIVE_STATUSES.includes(o.status));
+  const activeOrders = apiOrders.filter((o) => ACTIVE_STATUSES.includes(o.status));
 
   return (
     <div className="flex flex-col gap-5">
