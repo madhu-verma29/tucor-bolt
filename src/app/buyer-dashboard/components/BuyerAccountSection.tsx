@@ -392,6 +392,7 @@ interface PaymentCard {
 }
 
 function PaymentMethodsTab() {
+  const [paymentRows,setPaymentRows]=useState<any[]>([]); useEffect(()=>{buyerApi.payments().then(setPaymentRows).catch(()=>setPaymentRows([]));},[]);
   const [showFull, setShowFull] = useState<string | null>(null);
   const [methods,setMethods] = useState<PaymentCard[]>([]);
   useEffect(()=>{buyerApi.bankAccounts().then(a=>setMethods(a.map((x:any)=>({id:x.id,type:'bank',label:`${x.bankName} — ${x.accountType}`,detail:`IFSC: ${x.ifsc} · Branch: ${x.branch||'—'}`,masked:x.accountNumber,verified:x.verified,primary:x.primary})))).catch(()=>setMethods([]));},[]);
@@ -481,20 +482,14 @@ function PaymentMethodsTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {[
-                { date: '08 Sep 2026', ref: 'ORD-2026-0891', method: 'HDFC ••7890', amount: '₹1,84,500', status: 'Settled' },
-                { date: '02 Sep 2026', ref: 'ORD-2026-0834', method: 'HDFC ••7890', amount: '₹2,12,000', status: 'Settled' },
-                { date: '25 Aug 2026', ref: 'ORD-2026-0779', method: 'ICICI ••4321', amount: '₹98,750', status: 'Settled' },
-                { date: '18 Aug 2026', ref: 'ORD-2026-0712', method: 'HDFC ••7890', amount: '₹3,45,200', status: 'Settled' },
-                { date: '10 Aug 2026', ref: 'ORD-2026-0655', method: 'HDFC ••7890', amount: '₹1,67,800', status: 'Settled' },
-              ].map((row) => (
-                <tr key={row.ref}>
-                  <td className="py-3 pr-4 text-muted-foreground text-xs">{row.date}</td>
+              {paymentRows.map((row:any) => (
+                <tr key={row.orderId}>
+                  <td className="py-3 pr-4 text-muted-foreground text-xs">{row.settledDate||row.dueDate||'—'}</td>
                   <td className="py-3 pr-4 font-mono text-xs text-foreground">{row.ref}</td>
-                  <td className="py-3 pr-4 text-xs text-foreground">{row.method}</td>
-                  <td className="py-3 text-right font-semibold text-xs text-foreground">{row.amount}</td>
+                  <td className="py-3 pr-4 text-xs text-foreground">{row.reference||'—'}</td>
+                  <td className="py-3 text-right font-semibold text-xs text-foreground">{`₹${Number(row.amount).toLocaleString('en-IN')}`}</td>
                   <td className="py-3 pl-4 text-right">
-                    <span className="badge-active text-xs">{row.status}</span>
+                    <span className={row.status==='Settled'?'badge-active text-xs':'badge-pending text-xs'}>{row.status}</span>
                   </td>
                 </tr>
               ))}
