@@ -1,0 +1,3 @@
+package in.tucor.api.buyer;
+import jakarta.validation.Valid; import org.springframework.security.core.Authentication; import org.springframework.web.bind.annotation.*;
+@RestController @RequestMapping("/api/buyer/profile") public class BuyerProfileController {private final BuyerProfileService service;public BuyerProfileController(BuyerProfileService s){service=s;}@GetMapping public BuyerProfileDtos.Profile get(Authentication a){return service.get(a.getName());}@PutMapping public BuyerProfileDtos.Profile update(Authentication a,@Valid @RequestBody BuyerProfileDtos.Update r){return service.update(a.getName(),r);}}
