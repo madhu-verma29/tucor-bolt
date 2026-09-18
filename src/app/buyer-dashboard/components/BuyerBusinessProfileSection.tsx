@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { buyerApi } from '@/lib/buyer-api';
+import { buyerApi, uploadBuyerDocument } from '@/lib/buyer-api';
+import { getSession } from '@/lib/auth-api';
 import { toast } from 'sonner';
 import { Building2, ShieldCheck, Landmark, Phone, Settings, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, EyeOff, Upload, ChevronRight, MapPin, Info, RefreshCw, Hash, Plus, Trash2, ToggleLeft, ToggleRight, Star, Lock, Globe,  } from 'lucide-react';
 
@@ -262,108 +263,7 @@ function DocRow({ icon, title, number, status, expiry, submittedOn, note }: DocR
   );
 }
 
-function VerificationTab() {
-  return (
-    <div>
-      {/* Trust Score */}
-      <div className="card p-5 mb-6 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="section-label mb-1">TUCOR Buyer Trust Score</div>
-            <div className="flex items-end gap-2">
-              <span className="text-4xl font-bold text-primary font-mono">82</span>
-              <span className="text-muted-foreground text-sm mb-1">/ 100</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Based on KYC completeness, procurement history, and compliance standing
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 min-w-[200px]">
-            {[
-              { label: 'GST Registration Verified', done: true },
-              { label: 'Business PAN Verified', done: true },
-              { label: 'Bank Account Linked', done: true },
-              { label: 'Director KYC', done: false },
-              { label: 'End-Use Declaration', done: false },
-            ].map(({ label, done }) => (
-              <div key={label} className="flex items-center gap-2 text-xs">
-                {done ? (
-                  <CheckCircle2 size={13} className="text-success flex-shrink-0" />
-                ) : (
-                  <AlertCircle size={13} className="text-warning flex-shrink-0" />
-                )}
-                <span className={done ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="mt-4">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-            <span>Verification Progress</span>
-            <span>3 of 5 complete</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: '60%' }} />
-          </div>
-        </div>
-      </div>
-
-      <SectionCard
-        title="KYC & Compliance Documents"
-        subtitle="Required documents for buyer verification and procurement eligibility"
-      >
-        <DocRow
-          icon={<Hash size={16} className="text-primary" />}
-          title="GST Registration Certificate"
-          number="27AABCB1234C1ZW"
-          status="verified"
-          submittedOn="18 Feb 2026"
-          expiry="Lifetime (Annual Filing)"
-        />
-        <DocRow
-          icon={<Building2 size={16} className="text-primary" />}
-          title="Business PAN Card"
-          number="AABCB1234C"
-          status="verified"
-          submittedOn="18 Feb 2026"
-        />
-        <DocRow
-          icon={<ShieldCheck size={16} className="text-primary" />}
-          title="End-Use Declaration (UCO)"
-          number="—"
-          status="not_submitted"
-          note="Upload a signed end-use declaration confirming UCO will be used for biodiesel production or approved industrial purposes."
-        />
-        <DocRow
-          icon={<Building2 size={16} className="text-primary" />}
-          title="Director / Authorized Signatory KYC"
-          number="—"
-          status="pending"
-          submittedOn="05 Sep 2026"
-          note="Your KYC documents are under review by the TUCOR compliance team. Expected completion: 2–3 business days."
-        />
-      </SectionCard>
-
-      <SectionCard title="Verification Timeline" subtitle="History of your compliance submissions and approvals">
-        <div className="space-y-3">
-          {[
-            { date: '18 Feb 2026', event: 'GST Certificate verified by TUCOR compliance team', status: 'verified' as VerificationStatus },
-            { date: '18 Feb 2026', event: 'Business PAN verified and linked to buyer account', status: 'verified' as VerificationStatus },
-            { date: '05 Sep 2026', event: 'Director KYC submitted — under review', status: 'under_review' as VerificationStatus },
-          ].map(({ date, event, status }, index) => (
-            <div key={index} className="flex items-start gap-3">
-              <VerificationBadge status={status} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-foreground">{event}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{date}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-    </div>
-  );
-}
+function VerificationTab() { const [profile,setProfile]=useState<any>(null);const [docs,setDocs]=useState<any[]>([]);const [banks,setBanks]=useState<any[]>([]);const inputRef=React.useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState('GST');const load=()=>Promise.all([buyerApi.profile(),buyerApi.documents(),buyerApi.bankAccounts()]).then(([p,d,b])=>{setProfile(p);setDocs(d);setBanks(b)});useEffect(()=>{load().catch(()=>{})},[]);const status=(type:string):VerificationStatus=>{const d=docs.find(x=>x.type===type);return !d?'not_submitted':d.status==='VERIFIED'?'verified':d.status==='REJECTED'?'rejected':'under_review'};const upload=(type:string)=>{setUploadType(type);inputRef.current?.click()};const onFile=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{await uploadBuyerDocument(uploadType,f);await load();toast.success('Document uploaded')}catch(err){toast.error(err instanceof Error?err.message:'Upload failed')}finally{e.target.value=''}};const view=async(type:string)=>{const d=docs.find(x=>x.type===type);if(!d)return;const s=getSession(),base=(process.env.NEXT_PUBLIC_API_BASE_URL||'http://localhost:8080').replace(/\/$/,'');const res=await fetch(base+'/api/buyer/documents/'+d.id+'/download',{headers:{Authorization:`Bearer ${s?.accessToken||''}`}});if(!res.ok)return;const blob=await res.blob();window.open(URL.createObjectURL(blob),'_blank')};const checks=[status('GST')==='verified',status('PAN')==='verified',banks.length>0,status('DIRECTOR_KYC')==='verified',status('END_USE_DECLARATION')==='verified'];const complete=checks.filter(Boolean).length;const score=Math.round(complete/checks.length*100);const rows=[['GST','GST Registration Certificate',profile?.gstNumber||'—'],['PAN','Business PAN Card',profile?.pan||'—'],['END_USE_DECLARATION','End-Use Declaration (UCO)','—'],['DIRECTOR_KYC','Director / Authorized Signatory KYC','—']] as const;return <div><input ref={inputRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={onFile}/><div className="card p-5 mb-6 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20"><div className="flex items-center justify-between flex-wrap gap-4"><div><div className="section-label mb-1">TUCOR Buyer Trust Score</div><div className="flex items-end gap-2"><span className="text-4xl font-bold text-primary font-mono">{score}</span><span className="text-muted-foreground text-sm mb-1">/ 100</span></div><p className="text-xs text-muted-foreground mt-1">Based on current verification completeness</p></div><div className="flex flex-col gap-2 min-w-[200px]">{[['GST Registration Verified',checks[0]],['Business PAN Verified',checks[1]],['Bank Account Linked',checks[2]],['Director KYC',checks[3]],['End-Use Declaration',checks[4]]].map(([label,done]:any)=><div key={label} className="flex items-center gap-2 text-xs">{done?<CheckCircle2 size={13} className="text-success"/>:<AlertCircle size={13} className="text-warning"/>}<span>{label}</span></div>)}</div></div><div className="mt-4"><div className="flex justify-between text-xs text-muted-foreground mb-1.5"><span>Verification Progress</span><span>{complete} of 5 complete</span></div><div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{width:`${score}%`}}/></div></div></div><SectionCard title="KYC & Compliance Documents" subtitle="Required documents for buyer verification and procurement eligibility">{rows.map(([type,title,num])=><div key={type} onClick={()=>{}}><DocRow icon={<ShieldCheck size={16} className="text-primary"/>} title={title} number={num} status={status(type)} submittedOn={docs.find(x=>x.type===type)?.uploadedAt?.slice(0,10)}/><div className="flex gap-2 -mt-2 mb-3 ml-5"><button onClick={()=>upload(type)} className="btn-secondary text-xs px-3 py-1.5">Upload / Replace</button>{docs.some(x=>x.type===type)&&<button onClick={()=>view(type)} className="btn-ghost text-xs px-3 py-1.5">View</button>}</div></div>)}</SectionCard><SectionCard title="Verification Timeline" subtitle="History of your compliance submissions and approvals"><div className="space-y-3">{docs.map((d:any)=><div key={d.id} className="flex items-start gap-3"><VerificationBadge status={d.status==='VERIFIED'?'verified':d.status==='REJECTED'?'rejected':'under_review'}/><div><div className="text-sm text-foreground">{d.type.replaceAll('_',' ')} — {d.status.replaceAll('_',' ')}</div><div className="text-xs text-muted-foreground mt-0.5">{d.uploadedAt?.slice(0,10)}</div></div></div>)}</div></SectionCard></div>}
 
 // ─── Tab: Bank Account ────────────────────────────────────────────────────────
 
