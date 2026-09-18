@@ -9,7 +9,7 @@ import PurchaseHistorySection from './PurchaseHistorySection';
 import BuyerAccountSection from './BuyerAccountSection';
 import BuyerListingsSection from './BuyerListingsSection';
 import BuyerHomeSection from './BuyerHomeSection';
-import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import type { UCOMarketListing } from '@/lib/buyer-api';
 import BuyerOrderCreationSection from './BuyerOrderCreationSection';
 import BuyerOrdersTrackingSection from './BuyerOrdersTrackingSection';
 import PaymentConfirmationSection from './PaymentConfirmationSection';
