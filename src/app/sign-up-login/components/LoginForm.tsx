@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { authApi, dashboardFor, saveSession } from '@/lib/auth-api';
 
 interface LoginFormData {
   email: string;
@@ -49,24 +50,17 @@ export default function LoginForm({
     toast.success(`Demo credentials filled for ${account.role}`);
   };
 
-  const onSubmit = (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
-    // BACKEND INTEGRATION: POST /api/auth/login { email, password, rememberMe }
-    setTimeout(() => {
-      const match = demoAccounts.find(
-        (a) => a.email === data.email && a.password === data.password
-      );
-      if (match) {
-        toast.success(`Welcome back! Redirecting to ${match.role} dashboard...`);
-        const dashboardPath = match.role === 'Buyer' ? '/buyer-dashboard' : '/seller-dashboard';
-        setTimeout(() => router.push(dashboardPath), 800);
-      } else {
-        setError('email', {
-          message: 'Invalid credentials — use the demo accounts below to sign in',
-        });
-        setLoading(false);
-      }
-    }, 1400);
+    try {
+      const tokens = await authApi.login(data.email, data.password, data.rememberMe);
+      saveSession(tokens, data.rememberMe);
+      toast.success('Welcome back! Redirecting to your dashboard...');
+      router.push(dashboardFor(tokens.role));
+    } catch (error) {
+      setError('email', { message: error instanceof Error ? error.message : 'Unable to sign in' });
+      setLoading(false);
+    }
   };
 
   return (
