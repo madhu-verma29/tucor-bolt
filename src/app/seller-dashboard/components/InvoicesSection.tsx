@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Receipt, Download, Search, CheckCircle2, Clock, AlertCircle, FileText } from 'lucide-react';
-import { buyerApi } from '@/lib/buyer-api';
+import { mockPayments } from '@/lib/mock-data';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
 
@@ -15,13 +15,20 @@ const statusConfig = {
   Disputed: { className: 'badge-danger', icon: AlertCircle },
 };
 
+const invoiceData = mockPayments.map((p, i) => ({
+  ...p,
+  description: `UCO Collection Settlement`,
+  period: i === 0 ? 'Sep 2026' : i === 1 ? 'Sep 2026' : i === 2 ? 'Aug 2026' : 'Aug 2026',
+  type: 'Settlement Invoice' as const,
+}));
+
 export default function InvoicesSection() {
-  const [search, setSearch] = useState(''); const [invoiceData,setInvoiceData]=useState<any[]>([]);useEffect(()=>{buyerApi.payments().then(ps=>setInvoiceData(ps.filter(p=>p.invoiceNumber).map(p=>({...p,description:'UCO Procurement Payment',period:(p.settledDate||p.dueDate||'').slice(0,7),type:'Procurement Invoice'})))).catch(()=>setInvoiceData([]));},[]);
+  const [search, setSearch] = useState('');
 
   const filtered = invoiceData.filter(
     (inv) =>
-      (inv.invoiceNumber||'').toLowerCase().includes(search.toLowerCase()) ||
-      (inv.orderId||'').toLowerCase().includes(search.toLowerCase())
+      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
+      inv.orderId.toLowerCase().includes(search.toLowerCase())
   );
 
   const totalSettled = invoiceData.filter((i) => i.status === 'Settled').reduce((s, i) => s + i.amount, 0);
@@ -50,7 +57,7 @@ export default function InvoicesSection() {
           { label: 'Total Invoices', value: invoiceData.length, sub: 'All time', color: 'text-foreground', bg: 'bg-muted', icon: FileText },
           { label: 'Settled', value: invoiceData.filter((i) => i.status === 'Settled').length, sub: `₹${totalSettled.toLocaleString('en-IN')}`, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
           { label: 'Pending', value: invoiceData.filter((i) => ['Pending', 'Processing'].includes(i.status)).length, sub: 'Awaiting settlement', color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
-          { label: 'This Month', value: invoiceData.filter((i) => i.period === new Date().toISOString().slice(0,7)).length, sub: new Date().toLocaleString('en-IN',{month:'short',year:'numeric'}), color: 'text-info', bg: 'bg-info-bg', icon: Receipt },
+          { label: 'This Month', value: invoiceData.filter((i) => i.period === 'Sep 2026').length, sub: 'Sep 2026', color: 'text-info', bg: 'bg-info-bg', icon: Receipt },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -123,7 +130,7 @@ export default function InvoicesSection() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => { const body=`TUCOR INVOICE\nInvoice: ${inv.invoiceNumber}\nOrder: ${inv.orderId}\nAmount: ₹${inv.amount}\nStatus: ${inv.status}\nReference: ${inv.reference||'—'}`;const blob=new Blob([body],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${inv.invoiceNumber}.txt`;a.click();URL.revokeObjectURL(url); }}
+                        onClick={() => toast.success(`Downloading ${inv.invoiceNumber}.pdf`)}
                         className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors duration-150"
                         title="Download PDF"
                       >
