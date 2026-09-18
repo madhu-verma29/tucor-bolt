@@ -1,1 +1,1 @@
-package in.tucor.api.buyer; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface MarketListingRepository extends JpaRepository<MarketListing,UUID>{List<MarketListing> findAllByOrderByCreatedAtDesc();}
+package in.tucor.api.buyer; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface MarketListingRepository extends JpaRepository<MarketListing,UUID>{List<MarketListing> findAllByOrderByCreatedAtDesc(); Optional<MarketListing> findByPublicId(String publicId);}
