@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Truck, MapPin, Calendar, Package, ChevronDown, Phone, MessageSquare, ShieldCheck, Search, ArrowUpDown, FileText, AlertCircle, CircleDot,  } from 'lucide-react';
-import { mockBuyerOrders, BuyerOrder } from '@/lib/buyer-mock-data';
+import { BuyerOrder } from '@/lib/buyer-mock-data';
+import { buyerApi } from '@/lib/buyer-api';
 
 // BACKEND INTEGRATION: GET /api/buyer/orders — returns all orders for authenticated buyer
 
@@ -318,11 +319,13 @@ function OrderCard({ order }: { order: BuyerOrder }) {
 }
 
 export default function BuyerOrdersTrackingSection() {
+  const [apiOrders,setApiOrders]=useState<BuyerOrder[]>([]);
+  useEffect(()=>{buyerApi.orders().then(setApiOrders).catch(()=>setApiOrders([]));},[]);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortDesc, setSortDesc] = useState(true);
 
-  const allOrders = [...mockBuyerOrders].sort((a, b) => {
+  const allOrders = [...apiOrders].sort((a, b) => {
     const dateA = new Date(a.createdAt).getTime();
     const dateB = new Date(b.createdAt).getTime();
     return sortDesc ? dateB - dateA : dateA - dateB;
