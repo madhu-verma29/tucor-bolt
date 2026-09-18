@@ -1,6 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { buyerApi, uploadBuyerDocument } from '@/lib/buyer-api';
+import { getSession } from '@/lib/auth-api';
+import { toast } from 'sonner';
 import {
   CheckCircle2, Clock, AlertCircle, XCircle, RefreshCw, Upload,
   FileText, ShieldCheck, ChevronRight, Info, Download,
@@ -20,43 +23,7 @@ interface ComplianceDoc {
   required: boolean;
 }
 
-const mockDocs: ComplianceDoc[] = [
-  {
-    id: 'gst', name: 'GST Certificate', required: true,
-    description: 'Goods and Services Tax registration certificate for your business',
-    status: 'Verified', submittedAt: '2026-04-15',
-  },
-  {
-    id: 'company_reg', name: 'Company Registration', required: true,
-    description: 'Certificate of Incorporation or Partnership Deed',
-    status: 'Verified', submittedAt: '2026-04-15',
-  },
-  {
-    id: 'pan', name: 'PAN Card', required: true,
-    description: 'Permanent Account Number card of the business entity',
-    status: 'Verified', submittedAt: '2026-04-16',
-  },
-  {
-    id: 'bank', name: 'Bank Details / Cancelled Cheque', required: true,
-    description: 'Cancelled cheque or bank statement for payment processing',
-    status: 'Verified', submittedAt: '2026-04-16',
-  },
-  {
-    id: 'pollution', name: 'Pollution Control Certificate', required: true,
-    description: 'NOC from State Pollution Control Board for biodiesel processing',
-    status: 'Pending', submittedAt: '2026-09-10',
-  },
-  {
-    id: 'address', name: 'Address Proof', required: true,
-    description: 'Registered business address proof (utility bill, lease agreement)',
-    status: 'Verified', submittedAt: '2026-04-15',
-  },
-  {
-    id: 'iso', name: 'ISO / Quality Certification', required: false,
-    description: 'ISO 9001 or relevant quality management certification (optional)',
-    status: 'Not Submitted',
-  },
-];
+const REQUIRED_DOCS=[{id:'GST',name:'GST Certificate',description:'Goods and Services Tax registration certificate for your business',required:true},{id:'FSSAI_OR_REGISTRATION',name:'Company Registration',description:'Certificate of Incorporation or Partnership Deed',required:true},{id:'PAN',name:'PAN Card',description:'Permanent Account Number card of the business entity',required:true},{id:'BANK_PROOF',name:'Bank Details / Cancelled Cheque',description:'Cancelled cheque or bank statement for payment processing',required:true},{id:'ADDRESS_PROOF',name:'Address Proof',description:'Registered business address proof (utility bill, lease agreement)',required:true},{id:'POLLUTION_CONTROL',name:'Pollution Control Certificate',description:'NOC from State Pollution Control Board for biodiesel processing',required:true},{id:'ISO',name:'ISO / Quality Certification',description:'ISO 9001 or relevant quality management certification (optional)',required:false}];
 
 const statusConfig: Record<DocStatus, { cls: string; icon: React.ReactNode; label: string }> = {
   Verified: { cls: 'badge-active', icon: <CheckCircle2 size={12} />, label: 'Verified' },
@@ -66,19 +33,11 @@ const statusConfig: Record<DocStatus, { cls: string; icon: React.ReactNode; labe
   Expired: { cls: 'badge-danger', icon: <AlertCircle size={12} />, label: 'Expired' },
 };
 
-const timelineEvents = [
-  { date: 'Sep 10, 2026', event: 'Pollution Control Certificate submitted for review', status: 'pending' },
-  { date: 'Apr 16, 2026', event: 'PAN Card and Bank Details verified', status: 'done' },
-  { date: 'Apr 15, 2026', event: 'GST, Company Registration, and Address Proof verified', status: 'done' },
-  { date: 'Apr 12, 2026', event: 'Buyer verification application submitted', status: 'done' },
-  { date: 'Apr 10, 2026', event: 'Buyer account created on TUCOR', status: 'done' },
-];
-
 export default function BuyerVerificationSection() {
-  const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
+  const [expandedDoc, setExpandedDoc] = useState<string | null>(null); const [docs,setDocs]=useState<any[]>([]);const fileRef=useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState('');const load=()=>buyerApi.documents().then(setDocs).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load documents'));useEffect(()=>{load()},[]);const mapped:ComplianceDoc[]=REQUIRED_DOCS.map(d=>{const x=docs.find(v=>v.type===d.id);return {...d,status:!x?'Not Submitted':x.status==='VERIFIED'?'Verified':x.status==='REJECTED'?'Rejected':'Pending',submittedAt:x?.uploadedAt?.slice(0,10)}});const upload=(type:string)=>{setUploadType(type);fileRef.current?.click()};const onFile=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{await uploadBuyerDocument(uploadType,f);toast.success('Document uploaded');await load()}catch(err){toast.error(err instanceof Error?err.message:'Upload failed')}finally{e.target.value=''}};const download=async(type:string)=>{const d=docs.find(x=>x.type===type);if(!d)return;const s=getSession();const base=(process.env.NEXT_PUBLIC_API_BASE_URL||'http://localhost:8080').replace(/\/$/,'');const res=await fetch(base+'/api/buyer/documents/'+d.id+'/download',{headers:{Authorization:`Bearer ${s?.accessToken||''}`}});if(!res.ok){toast.error('Download failed');return}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=d.name;a.click();URL.revokeObjectURL(url)};
 
-  const verified = mockDocs.filter((d) => d.status === 'Verified').length;
-  const total = mockDocs.filter((d) => d.required).length;
+  const verified = mapped.filter((d) => d.status === 'Verified').length;
+  const total = mapped.filter((d) => d.required).length;
   const overallStatus: OverallStatus = verified >= total ? 'verified' : 'under_review';
 
   const overallConfig = {
@@ -89,7 +48,7 @@ export default function BuyerVerificationSection() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6"><input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={onFile}/>
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Verification Status</h1>
@@ -105,7 +64,7 @@ export default function BuyerVerificationSection() {
           <div>
             <div className="font-bold text-base">{overallConfig[overallStatus].label}</div>
             <div className="text-xs opacity-80 mt-0.5">
-              {verified} of {total} required documents verified · Last updated Sep 10, 2026
+              {verified} of {total} required documents verified · Updated from your submitted documents
             </div>
           </div>
         </div>
@@ -130,10 +89,10 @@ export default function BuyerVerificationSection() {
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Verified', value: mockDocs.filter((d) => d.status === 'Verified').length, color: 'text-success', bg: 'bg-success/10', icon: CheckCircle2 },
-          { label: 'Under Review', value: mockDocs.filter((d) => d.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning/10', icon: Clock },
-          { label: 'Action Required', value: mockDocs.filter((d) => d.status === 'Rejected').length, color: 'text-danger', bg: 'bg-danger/10', icon: XCircle },
-          { label: 'Not Submitted', value: mockDocs.filter((d) => d.status === 'Not Submitted').length, color: 'text-muted-foreground', bg: 'bg-muted', icon: AlertCircle },
+          { label: 'Verified', value: mapped.filter((d) => d.status === 'Verified').length, color: 'text-success', bg: 'bg-success/10', icon: CheckCircle2 },
+          { label: 'Under Review', value: mapped.filter((d) => d.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning/10', icon: Clock },
+          { label: 'Action Required', value: mapped.filter((d) => d.status === 'Rejected').length, color: 'text-danger', bg: 'bg-danger/10', icon: XCircle },
+          { label: 'Not Submitted', value: mapped.filter((d) => d.status === 'Not Submitted').length, color: 'text-muted-foreground', bg: 'bg-muted', icon: AlertCircle },
         ].map((stat) => {
           const StatIcon = stat.icon;
           return (
@@ -154,7 +113,7 @@ export default function BuyerVerificationSection() {
       <div className="card p-6">
         <h3 className="text-base font-bold text-foreground mb-4">Compliance Document Checklist</h3>
         <div className="flex flex-col gap-3">
-          {mockDocs.map((doc) => {
+          {mapped.map((doc) => {
             const cfg = statusConfig[doc.status];
             const isExpanded = expandedDoc === doc.id;
             return (
@@ -211,13 +170,13 @@ export default function BuyerVerificationSection() {
                     )}
                     <div className="flex gap-2 mt-3">
                       {(doc.status === 'Rejected' || doc.status === 'Not Submitted' || doc.status === 'Expired') && (
-                        <button className="btn-primary py-1.5 px-3 text-xs gap-1">
+                        <button onClick={()=>upload(doc.id)} className="btn-primary py-1.5 px-3 text-xs gap-1">
                           <Upload size={12} />
                           {doc.status === 'Rejected' ? 'Re-upload' : 'Upload'}
                         </button>
                       )}
                       {doc.status === 'Verified' && (
-                        <button className="btn-ghost py-1.5 px-3 text-xs gap-1">
+                        <button onClick={()=>download(doc.id)} className="btn-ghost py-1.5 px-3 text-xs gap-1">
                           <Download size={12} />
                           Download
                         </button>
@@ -231,27 +190,7 @@ export default function BuyerVerificationSection() {
         </div>
       </div>
 
-      {/* Verification timeline */}
-      <div className="card p-6">
-        <h3 className="text-base font-bold text-foreground mb-4">Verification Timeline</h3>
-        <div className="relative">
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
-          <div className="flex flex-col gap-4">
-            {timelineEvents.map((event, idx) => (
-              <div key={`buyer-timeline-${idx}`} className="flex items-start gap-4 pl-10 relative">
-                <div className={`absolute left-2.5 top-1 w-3 h-3 rounded-full border-2 flex-shrink-0 ${
-                  event.status === 'done' ? 'bg-success border-success' :
-                  event.status === 'pending' ? 'bg-warning border-warning animate-pulse' : 'bg-muted border-border'
-                }`} />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-foreground">{event.event}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{event.date}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Verification timeline */}<div className="card p-6"><h3 className="text-base font-bold text-foreground mb-4">Verification Timeline</h3><div className="relative"><div className="absolute left-4 top-0 bottom-0 w-px bg-border" /><div className="flex flex-col gap-4">{docs.map((d:any)=><div key={d.id} className="flex items-start gap-4 pl-10 relative"><div className="absolute left-2.5 top-1 w-3 h-3 rounded-full border-2 bg-warning border-warning" /><div><div className="text-sm font-medium text-foreground">{d.type.replaceAll('_',' ')} submitted — {d.status.replaceAll('_',' ')}</div><div className="text-xs text-muted-foreground mt-0.5">{d.uploadedAt?.slice(0,10)}</div></div></div>)}</div></div></div>
     </div>
   );
 }
