@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   MapPin,
@@ -17,7 +17,8 @@ import {
   AlertCircle,
   X,
 } from 'lucide-react';
-import { mockMarketListings, UCOMarketListing } from '@/lib/buyer-mock-data';
+import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import { buyerApi } from '@/lib/buyer-api';
 
 const DELIVERY_LOCATIONS = [
   { id: 'loc-1', label: 'Navi Mumbai Plant', address: 'Plot 14, MIDC Industrial Area, Taloja, Navi Mumbai – 410208', state: 'Maharashtra' },
@@ -57,6 +58,8 @@ interface Props {
 type Step = 'select-listing' | 'order-details' | 'review-confirm';
 
 export default function BuyerOrderCreationSection({ onNavigate }: Props) {
+  const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]);
+  useEffect(()=>{buyerApi.listings().then(setMarketListings).catch(()=>setMarketListings([]));},[]);
   const [step, setStep] = useState<Step>('select-listing');
   const [search, setSearch] = useState('');
   const [selectedListing, setSelectedListing] = useState<UCOMarketListing | null>(null);
@@ -69,10 +72,10 @@ export default function BuyerOrderCreationSection({ onNavigate }: Props) {
   const [orderNotes, setOrderNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [orderId] = useState(() => `ORD-2026-${String(Math.floor(Math.random() * 9000) + 1000)}`);
+  const [orderId,setOrderId] = useState('');
 
   const availableListings = useMemo(() => {
-    return mockMarketListings.filter((l) => l.status !== 'Reserved');
+    return marketListings.filter((l) => l.status !== 'Reserved');
   }, []);
 
   const filteredListings = useMemo(() => {
@@ -134,9 +137,7 @@ export default function BuyerOrderCreationSection({ onNavigate }: Props) {
 
   const handleConfirmOrder = async () => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setSubmitting(false);
-    setSubmitted(true);
+    try { if(!selectedListing||!costs)return; const created=await buyerApi.createOrder({listingId:selectedListing.id,volumeLiters:volume,deliveryAddress,notes:orderNotes||undefined}); setOrderId(created.id); setSubmitted(true); } finally { setSubmitting(false); }
   };
 
   const deliveryAddress =
