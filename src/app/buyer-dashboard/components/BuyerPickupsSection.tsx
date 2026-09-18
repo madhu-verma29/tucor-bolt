@@ -1,30 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { buyerApi, type BuyerPickup } from '@/lib/buyer-api';
 import { Truck, CheckCircle2, Clock, MapPin, Package, User } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
 
 
-
-interface BuyerPickup {
-  id: string;
-  orderId: string;
-  oilType: string;
-  volumeLiters: number;
-  scheduledDate: string;
-  status: 'Pending' | 'Scheduled' | 'Assigned' | 'In Transit' | 'Completed';
-  agentName: string;
-  vehicleNumber: string;
-  sellerCity: string;
-  notes?: string;
-}
-
-const mockBuyerPickups: BuyerPickup[] = [
-  { id: 'PKP-2026-0094', orderId: 'ORD-2026-0201', oilType: 'Palm', volumeLiters: 480, scheduledDate: '2026-09-12', status: 'Scheduled', agentName: 'Rajan Mehta', vehicleNumber: 'MH-04-CX-7721', sellerCity: 'Mumbai', notes: 'Arrive between 9 AM – 11 AM' },
-  { id: 'PKP-2026-0089', orderId: 'ORD-2026-0195', oilType: 'Soybean', volumeLiters: 390, scheduledDate: '2026-09-16', status: 'Assigned', agentName: 'Suresh Pillai', vehicleNumber: 'MH-01-BK-4490', sellerCity: 'Hyderabad' },
-  { id: 'PKP-2026-0078', orderId: 'ORD-2026-0188', oilType: 'Sunflower', volumeLiters: 310, scheduledDate: '2026-09-20', status: 'Pending', agentName: 'Unassigned', vehicleNumber: '—', sellerCity: 'Pune' },
-  { id: 'PKP-2026-0065', orderId: 'ORD-2026-0174', oilType: 'Blended', volumeLiters: 650, scheduledDate: '2026-08-20', status: 'Completed', agentName: 'Anil Sharma', vehicleNumber: 'MH-02-GH-3312', sellerCity: 'Mumbai', notes: '648L confirmed. Minor 2L variance.' },
-];
 
 const statusConfig = {
   Pending: { className: 'badge-pending', icon: Clock },
@@ -35,9 +16,9 @@ const statusConfig = {
 };
 
 export default function BuyerPickupsSection() {
-  const [filter, setFilter] = useState<'all' | BuyerPickup['status']>('all');
+  const [filter, setFilter] = useState<'all' | BuyerPickup['status']>('all'); const [buyerPickups,setBuyerPickups]=useState<BuyerPickup[]>([]);useEffect(()=>{buyerApi.pickups().then(setBuyerPickups).catch(()=>setBuyerPickups([]));},[]);
 
-  const filtered = mockBuyerPickups.filter((p) => filter === 'all' || p.status === filter);
+  const filtered = buyerPickups.filter((p) => filter === 'all' || p.status === filter);
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,10 +32,10 @@ export default function BuyerPickupsSection() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Pickups', value: mockBuyerPickups.length, color: 'text-foreground', bg: 'bg-muted', icon: Package },
-          { label: 'Pending', value: mockBuyerPickups.filter((p) => p.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
-          { label: 'Scheduled', value: mockBuyerPickups.filter((p) => ['Scheduled', 'Assigned'].includes(p.status)).length, color: 'text-info', bg: 'bg-info-bg', icon: Truck },
-          { label: 'Completed', value: mockBuyerPickups.filter((p) => p.status === 'Completed').length, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
+          { label: 'Total Pickups', value: buyerPickups.length, color: 'text-foreground', bg: 'bg-muted', icon: Package },
+          { label: 'Pending', value: buyerPickups.filter((p) => p.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
+          { label: 'Scheduled', value: buyerPickups.filter((p) => ['Scheduled', 'Assigned'].includes(p.status)).length, color: 'text-info', bg: 'bg-info-bg', icon: Truck },
+          { label: 'Completed', value: buyerPickups.filter((p) => p.status === 'Completed').length, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
