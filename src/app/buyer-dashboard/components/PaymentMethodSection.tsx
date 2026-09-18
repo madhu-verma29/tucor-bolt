@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { buyerApi } from '@/lib/buyer-api';
 import {
   CreditCard,
   Building2,
@@ -118,7 +119,7 @@ const DEFAULT_ORDER = {
   pickupDate: '2026-09-18',
 };
 
-const SAVED_METHODS = [
+const DEMO_SAVED_METHODS = [
   { id: 'saved-1', label: 'HDFC Bank — ••••4821', type: 'netbanking', icon: Building2 },
   { id: 'saved-2', label: 'arjun.mehta@okaxis', type: 'upi', icon: Smartphone },
 ];
@@ -134,6 +135,7 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
   const [processing, setProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const [paymentError, setPaymentError] = useState('');
+  const [savedMethods,setSavedMethods]=useState<any[]>([]);useEffect(()=>{buyerApi.bankAccounts().then(a=>{const m=a.map(x=>({id:x.id,label:`${x.bankName} — ${x.accountNumber}`,type:'netbanking',icon:Building2}));setSavedMethods(m);setUseSaved(m[0]?.id||null)}).catch(()=>setSavedMethods([]));},[]);
 
   const selectedMethod = PAYMENT_METHODS.find((m) => m.id === selectedMethodId)!;
 
@@ -166,15 +168,7 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
     setProcessing(true);
     setProcessingStep(1);
 
-    // Simulate payment processing steps
-    await new Promise((r) => setTimeout(r, 900));
-    setProcessingStep(2);
-    await new Promise((r) => setTimeout(r, 900));
-    setProcessingStep(3);
-    await new Promise((r) => setTimeout(r, 700));
-
-    setProcessing(false);
-    onNavigate('payment-confirmation');
+    try { setProcessingStep(2); const orders=await buyerApi.orders(); const payable=orders.find(o=>['Delivered','Payment','Confirmed'].includes(o.status)); if(!payable) throw new Error('No payable order found'); setProcessingStep(3); await buyerApi.createPayment({orderId:payable.id,method:useSaved?'bank':selectedMethodId}); setProcessing(false); onNavigate('payment-confirmation'); } catch(e){setProcessing(false);setPaymentError(e instanceof Error?e.message:'Payment failed');}
   };
 
   const processingMessages = [
@@ -213,14 +207,14 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
         <div className="lg:col-span-3 flex flex-col gap-5">
 
           {/* Saved Payment Methods */}
-          {SAVED_METHODS.length > 0 && (
+          {savedMethods.length > 0 && (
             <div className="card p-5">
               <h2 className="text-sm font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
                 <BadgeCheck size={15} className="text-primary" />
                 Saved Payment Methods
               </h2>
               <div className="flex flex-col gap-2">
-                {SAVED_METHODS.map((saved) => {
+                {savedMethods.map((saved) => {
                   const SavedIcon = saved.icon;
                   const isSelected = useSaved === saved.id;
                   return (
