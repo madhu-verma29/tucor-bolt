@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Search, SlidersHorizontal, MapPin, Droplets, Package, X, ArrowUpDown, ShieldCheck, ChevronDown, ChevronUp, Calendar, TrendingDown, LayoutGrid, List, RefreshCw, Info,  } from 'lucide-react';
+import { Search, SlidersHorizontal, MapPin, Droplets, Package, X, ArrowUpDown, ShieldCheck, ChevronDown, ChevronUp, Calendar, TrendingDown, LayoutGrid, List, RefreshCw, Info, Bookmark,  } from 'lucide-react';
 import type { UCOMarketListing } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
@@ -60,9 +60,11 @@ interface ListingCardProps {
   listing: UCOMarketListing;
   viewMode: 'grid' | 'list';
   onViewListing: (listing: UCOMarketListing) => void;
+  saved: boolean;
+  onToggleSaved: (listing: UCOMarketListing) => void;
 }
 
-function ListingCard({ listing, viewMode, onViewListing }: ListingCardProps) {
+function ListingCard({ listing, viewMode, onViewListing, saved, onToggleSaved }: ListingCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (viewMode === 'list') {
@@ -119,6 +121,7 @@ function ListingCard({ listing, viewMode, onViewListing }: ListingCardProps) {
 
           {/* Actions */}
           <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            <button onClick={() => onToggleSaved(listing)} className="btn-secondary text-xs px-3 py-1.5" title={saved ? "Remove saved listing" : "Save listing"}><Bookmark size={13} className={saved ? "fill-current" : ""}/></button>
             <button
               onClick={() => onViewListing(listing)}
               className="btn-primary text-xs px-3 py-1.5"
@@ -239,12 +242,12 @@ function ListingCard({ listing, viewMode, onViewListing }: ListingCardProps) {
       )}
 
       {/* CTA */}
-      <button
+      <div className="flex gap-2"><button onClick={() => onToggleSaved(listing)} className="btn-secondary px-3" title={saved ? "Remove saved listing" : "Save listing"}><Bookmark size={15} className={saved ? "fill-current" : ""}/></button><button
         onClick={() => onViewListing(listing)}
         className="btn-primary w-full text-sm py-2.5 mt-auto"
       >
         View Full Details & Request
-      </button>
+      </button></div>
     </div>
   );
 }
@@ -254,8 +257,8 @@ interface Props {
 }
 
 export default function BuyerListingsSection({ onViewListing }: Props) {
-  const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]);
-  useEffect(()=>{buyerApi.listings().then(setMarketListings).catch(()=>setMarketListings([]));},[]);
+  const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]); const [savedIds,setSavedIds]=useState<string[]>([]);
+  useEffect(()=>{Promise.all([buyerApi.listings(),buyerApi.savedListings()]).then(([l,s])=>{setMarketListings(l);setSavedIds(s)}).catch(()=>setMarketListings([]));},[]); const toggleSaved=async(l:UCOMarketListing)=>{if(savedIds.includes(l.id)){await buyerApi.unsaveListing(l.id);setSavedIds(x=>x.filter(id=>id!==l.id))}else{await buyerApi.saveListing(l.id);setSavedIds(x=>[...x,l.id])}};
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'volume_desc' | 'newest'>('newest');
