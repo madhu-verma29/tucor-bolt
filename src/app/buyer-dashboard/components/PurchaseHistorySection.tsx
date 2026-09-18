@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDown, CheckCircle2, XCircle, Download, Search, Calendar, MapPin, Package } from 'lucide-react';
-import { mockBuyerOrders, mockBuyerPayments } from '@/lib/buyer-mock-data';
+import { BuyerOrder, mockBuyerPayments } from '@/lib/buyer-mock-data';
+import { buyerApi } from '@/lib/buyer-api';
 
 // BACKEND INTEGRATION: GET /api/buyer/orders?status=completed,settled,cancelled,rejected
 
@@ -23,11 +24,12 @@ const gradeColors: Record<string, string> = {
 };
 
 export default function PurchaseHistorySection() {
+  const [apiOrders,setApiOrders]=useState<BuyerOrder[]>([]);useEffect(()=>{buyerApi.orders().then(setApiOrders).catch(()=>setApiOrders([]));},[]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const historyOrders = mockBuyerOrders.filter((o) => HISTORY_STATUSES.includes(o.status));
+  const historyOrders = apiOrders.filter((o) => HISTORY_STATUSES.includes(o.status));
 
   const filtered = historyOrders.filter((o) => {
     if (filterStatus !== 'all' && o.status !== filterStatus) return false;
