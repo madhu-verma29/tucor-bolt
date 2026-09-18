@@ -1,0 +1,1 @@
+package in.tucor.api.auth; public enum Role { SELLER, BUYER, ADMIN }

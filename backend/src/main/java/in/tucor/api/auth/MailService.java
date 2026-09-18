@@ -1,0 +1,5 @@
+package in.tucor.api.auth; import org.springframework.beans.factory.annotation.Value; import org.springframework.mail.SimpleMailMessage; import org.springframework.mail.javamail.JavaMailSender; import org.springframework.stereotype.Service;
+@Service public class MailService {private final JavaMailSender mail;private final String from;private final String webUrl;public MailService(JavaMailSender mail,@Value("${tucor.mail.from}") String from,@Value("${tucor.web-url}") String webUrl){this.mail=mail;this.from=from;this.webUrl=webUrl;}
+public void verification(String email,String token){send(email,"Verify your TUCOR email","Welcome to TUCOR. Verify your email:\n"+webUrl+"/verify-email?token="+token+"\nThis link expires in 24 hours.");}
+public void reset(String email,String token){send(email,"Reset your TUCOR password","Reset your password:\n"+webUrl+"/reset-password?token="+token+"\nThis link expires in 30 minutes. If you did not request this, ignore this email.");}
+private void send(String to,String subject,String text){SimpleMailMessage m=new SimpleMailMessage();m.setFrom(from);m.setTo(to);m.setSubject(subject);m.setText(text);mail.send(m);}}

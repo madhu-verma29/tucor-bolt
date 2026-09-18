@@ -1,0 +1,3 @@
+create table users(id uuid primary key,email varchar(255) not null unique,password_hash varchar(255) not null,role varchar(20) not null,status varchar(30) not null default 'ACTIVE',email_verified boolean not null default false,failed_login_attempts int not null default 0,locked_until timestamptz,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create table refresh_tokens(id uuid primary key,user_id uuid not null references users(id) on delete cascade,token_hash varchar(64) not null unique,expires_at timestamptz not null,revoked_at timestamptz,created_at timestamptz not null default now());
+create index idx_refresh_user on refresh_tokens(user_id);

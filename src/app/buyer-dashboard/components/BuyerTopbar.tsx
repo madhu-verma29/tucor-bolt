@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Menu, PanelLeftClose, Bell, Search, ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { authApi, clearSession, getSession } from '@/lib/auth-api';
 import Icon from '@/components/ui/AppIcon';
 
 
@@ -23,6 +25,7 @@ const notifications = [
 ];
 
 export default function BuyerTopbar({ onToggleSidebar, onMobileMenuOpen, sidebarCollapsed, onNavigate }: Props) {
+  const router = useRouter();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -38,6 +41,7 @@ export default function BuyerTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
   }, []);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
+  const handleSignOut = async () => { const session=getSession(); try { if(session?.refreshToken) await authApi.logout(session.refreshToken); } finally { clearSession(); router.replace('/sign-up-login'); } };
 
   return (
     <header className="h-14 bg-card border-b border-border flex items-center gap-3 px-4 flex-shrink-0 z-30">
@@ -151,10 +155,10 @@ export default function BuyerTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
                 );
               })}
               <div className="border-t border-border">
-                <Link href="/sign-up-login" className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger-bg transition-colors duration-100">
+                <button onClick={handleSignOut} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger-bg transition-colors duration-100">
                   <LogOut size={15} />
                   Sign Out
-                </Link>
+                </button>
               </div>
             </div>
           )}

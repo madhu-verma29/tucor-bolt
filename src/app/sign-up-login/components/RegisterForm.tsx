@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Check, Upload, ChevronRight, ChevronLeft, Leaf } from 'lucide-react';
 import { toast } from 'sonner';
+import { authApi } from '@/lib/auth-api';
 
 type Role = 'Seller' | 'Buyer';
 
@@ -79,6 +80,7 @@ export default function RegisterForm({ onLogin }: { onLogin: () => void }) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<string[]>([]);
+  const [documentFiles, setDocumentFiles] = useState<Record<string, File>>({});
 
   const {
     register,
@@ -106,25 +108,47 @@ export default function RegisterForm({ onLogin }: { onLogin: () => void }) {
     setStep((s) => s + 1);
   };
 
-  const handleFakeDocUpload = (docName: string) => {
-    if (!uploadedDocs.includes(docName)) {
-      setUploadedDocs((prev) => [...prev, docName]);
-      toast.success(`${docName} uploaded successfully`);
-    }
+  const handleDocUpload = (docName: string, file?: File) => {
+    if (!file) return;
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) { toast.error('Only PDF, JPG and PNG files are allowed'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Maximum file size is 5MB'); return; }
+    setDocumentFiles((prev) => ({ ...prev, [docName]: file }));
+    if (!uploadedDocs.includes(docName)) setUploadedDocs((prev) => [...prev, docName]);
+    toast.success(`${docName} selected successfully`);
   };
 
-  const onSubmit = () => {
-    if (!watch('agreeTerms')) {
+  const onSubmit = async (data: RegisterData) => {
+    if (!data.agreeTerms) {
       toast.error('Please accept the Terms of Service to continue');
       return;
     }
+    if (!role) {
+      toast.error('Please select your role to continue');
+      return;
+    }
     setLoading(true);
-    // BACKEND INTEGRATION: POST /api/auth/register { role, ...formData }
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const requiredDocs = ['GST Certificate', role === 'Seller' ? 'FSSAI License' : 'Business Registration', 'Address Proof (Utility Bill / Lease)'];
+      if (requiredDocs.some((name) => !documentFiles[name])) { toast.error('Please upload all required documents'); return; }
+      await authApi.register({
+        email: data.email, password: data.password, role: role === 'Buyer' ? 'BUYER' : 'SELLER',
+        businessName: data.businessName, businessType: data.businessType, gstNumber: data.gstNumber,
+        registrationNumber: data.fssaiNumber || undefined, address: data.address, city: data.city,
+        state: data.state, pincode: data.pincode, estimatedVolumeMonthly: data.estimatedVolumeMonthly || undefined,
+        fullName: data.fullName, phone: data.phone
+      });
+      const docTypes: Record<string,string> = {
+        'GST Certificate':'GST', 'FSSAI License':'FSSAI_OR_REGISTRATION', 'Business Registration':'FSSAI_OR_REGISTRATION',
+        'Address Proof (Utility Bill / Lease)':'ADDRESS_PROOF', 'Cancelled Cheque / Bank Statement':'BANK_PROOF'
+      };
+      await Promise.all(Object.entries(documentFiles).map(([name,file]) => authApi.uploadRegistrationDocument(data.email, docTypes[name], file)));
       setSubmitted(true);
-      toast.success('Registration submitted! Check your email for verification.');
-    }, 2000);
+      toast.success('Registration submitted successfully. You can now sign in.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -489,9 +513,10 @@ export default function RegisterForm({ onLogin }: { onLogin: () => void }) {
                   {doc.label}
                   {doc.required && <span className="text-danger ml-1">*</span>}
                 </label>
+                <input id={`file-${doc.id}`} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="hidden" onChange={(e) => handleDocUpload(doc.label, e.target.files?.[0])} />
                 <button
                   type="button"
-                  onClick={() => handleFakeDocUpload(doc.label)}
+                  onClick={() => document.getElementById(`file-${doc.id}`)?.click()}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed transition-all duration-200 ${
                     uploaded
                       ? 'border-success bg-success-bg' :'border-border hover:border-primary hover:bg-secondary/30'
