@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Search, SlidersHorizontal, MapPin, Droplets, Award, Package, X, ArrowUpDown, Zap } from 'lucide-react';
-import { mockMarketListings, UCOMarketListing } from '@/lib/buyer-mock-data';
+import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import { buyerApi } from '@/lib/buyer-api';
 
 interface Filters {
   oilType: string[];
@@ -44,6 +45,8 @@ interface Props {
 }
 
 export default function UCOSearchSection({ onViewListing }: Props) {
+  const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]);
+  useEffect(()=>{buyerApi.listings().then(setMarketListings).catch(()=>setMarketListings([]));},[]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'volume_desc' | 'newest'>('newest');
@@ -76,7 +79,7 @@ export default function UCOSearchSection({ onViewListing }: Props) {
     (filters.minPrice ? 1 : 0) + (filters.maxPrice ? 1 : 0) +
     (filters.availability ? 1 : 0);
 
-  const filtered = mockMarketListings
+  const filtered = marketListings
     .filter((l) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -111,7 +114,7 @@ export default function UCOSearchSection({ onViewListing }: Props) {
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-xl border border-border">
           <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-          {mockMarketListings.filter((l) => l.status === 'Available').length} listings available
+          {marketListings.filter((l) => l.status === 'Available').length} listings available
         </div>
       </div>
 
