@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { buyerApi } from '@/lib/buyer-api';
 import {
   TrendingDown,
   Clock,
@@ -40,120 +41,6 @@ interface PendingCredit {
   expectedDate: string;
   stage: string;
 }
-
-const mockRefunds: RefundRecord[] = [
-  {
-    id: 'R001',
-    orderId: 'ORD-2024-0891',
-    invoiceNo: 'INV-2024-0891',
-    volumeLiters: 180,
-    pricePerLiter: 38,
-    grossPaid: 6840,
-    refundAmount: 342,
-    netSpend: 6498,
-    status: 'Credited',
-    creditedDate: '14 Aug 2024',
-    dueDate: '12 Aug 2024',
-    reference: 'UTR9921049302',
-  },
-  {
-    id: 'R002',
-    orderId: 'ORD-2024-0876',
-    invoiceNo: 'INV-2024-0876',
-    volumeLiters: 220,
-    pricePerLiter: 36,
-    grossPaid: 7920,
-    refundAmount: 396,
-    netSpend: 7524,
-    status: 'Credited',
-    creditedDate: '07 Aug 2024',
-    dueDate: '05 Aug 2024',
-    reference: 'UTR9910293847',
-  },
-  {
-    id: 'R003',
-    orderId: 'ORD-2024-0862',
-    invoiceNo: 'INV-2024-0862',
-    volumeLiters: 150,
-    pricePerLiter: 40,
-    grossPaid: 6000,
-    refundAmount: 300,
-    netSpend: 5700,
-    status: 'Processing',
-    creditedDate: null,
-    dueDate: '20 Aug 2024',
-    reference: 'UTR9930192847',
-  },
-  {
-    id: 'R004',
-    orderId: 'ORD-2024-0849',
-    invoiceNo: 'INV-2024-0849',
-    volumeLiters: 300,
-    pricePerLiter: 35,
-    grossPaid: 10500,
-    refundAmount: 525,
-    netSpend: 9975,
-    status: 'Credited',
-    creditedDate: '30 Jul 2024',
-    dueDate: '28 Jul 2024',
-    reference: 'UTR9900192847',
-  },
-  {
-    id: 'R005',
-    orderId: 'ORD-2024-0835',
-    invoiceNo: 'INV-2024-0835',
-    volumeLiters: 90,
-    pricePerLiter: 42,
-    grossPaid: 3780,
-    refundAmount: 189,
-    netSpend: 3591,
-    status: 'Pending',
-    creditedDate: null,
-    dueDate: '24 Aug 2024',
-    reference: '—',
-  },
-  {
-    id: 'R006',
-    orderId: 'ORD-2024-0820',
-    invoiceNo: 'INV-2024-0820',
-    volumeLiters: 200,
-    pricePerLiter: 37,
-    grossPaid: 7400,
-    refundAmount: 370,
-    netSpend: 7030,
-    status: 'Disputed',
-    creditedDate: null,
-    dueDate: '17 Aug 2024',
-    reference: '—',
-  },
-];
-
-const mockPendingCredits: PendingCredit[] = [
-  {
-    id: 'PC001',
-    orderId: 'ORD-2024-0862',
-    description: 'Overcharge Refund — Palm Oil 150 L',
-    amount: 300,
-    expectedDate: '20 Aug 2024',
-    stage: 'TUCOR Verification',
-  },
-  {
-    id: 'PC002',
-    orderId: 'ORD-2024-0835',
-    description: 'Quality Adjustment Credit — Sunflower 90 L',
-    amount: 189,
-    expectedDate: '24 Aug 2024',
-    stage: 'Quality Check',
-  },
-  {
-    id: 'PC003',
-    orderId: 'ORD-2024-0820',
-    description: 'Dispute Resolution Credit — Blended 200 L',
-    amount: 370,
-    expectedDate: 'On Hold',
-    stage: 'Dispute Review',
-  },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -236,24 +123,24 @@ function RefundRow({ record }: { record: RefundRecord }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BuyerEarningsSection() {
-  const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [filterStatus, setFilterStatus] = useState<string>('All'); const [refunds,setRefunds]=useState<RefundRecord[]>([]); const [pendingCredits,setPendingCredits]=useState<PendingCredit[]>([]); useEffect(()=>{Promise.all([buyerApi.orders(),buyerApi.payments()]).then(([orders,payments])=>{const rows:RefundRecord[]=payments.filter(p=>p.status==='Refunded').map(p=>{const o=orders.find(x=>x.id===p.orderId);return {id:p.id,orderId:p.orderId,invoiceNo:p.invoiceNumber||'—',volumeLiters:o?.volumeLiters||0,pricePerLiter:o?.pricePerLiter||0,grossPaid:Number(p.amount),refundAmount:Number(p.amount),netSpend:0,status:'Credited',creditedDate:p.settledDate||null,dueDate:p.dueDate||'—',reference:p.reference||'—'}});setRefunds(rows);setPendingCredits([])}).catch(()=>{})},[]);
 
-  const totalCredited = mockRefunds
+  const totalCredited = refunds
     .filter((r) => r.status === 'Credited')
     .reduce((s, r) => s + r.refundAmount, 0);
 
-  const pendingTotal = mockPendingCredits.reduce((s, c) => s + c.amount, 0);
+  const pendingTotal = pendingCredits.reduce((s, c) => s + c.amount, 0);
 
-  const thisMonthCredited = mockRefunds
+  const thisMonthCredited = refunds
     .filter((r) => r.status === 'Credited' && r.creditedDate?.includes('Aug'))
     .reduce((s, r) => s + r.refundAmount, 0);
 
-  const totalSpend = mockRefunds.reduce((s, r) => s + r.grossPaid, 0);
+  const totalSpend = refunds.reduce((s, r) => s + r.grossPaid, 0);
 
   const statuses = ['All', 'Credited', 'Processing', 'Pending', 'Disputed'];
 
   const filtered =
-    filterStatus === 'All' ? mockRefunds : mockRefunds.filter((r) => r.status === filterStatus);
+    filterStatus === 'All' ? refunds : refunds.filter((r) => r.status === filterStatus);
 
   return (
     <div className="space-y-6">
@@ -292,7 +179,7 @@ export default function BuyerEarningsSection() {
             </div>
           </div>
           <p className="text-2xl font-bold text-foreground">{fmt(thisMonthCredited)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Credits in August 2024</p>
+          <p className="text-xs text-muted-foreground mt-1">Credits this month</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-4">
@@ -303,7 +190,7 @@ export default function BuyerEarningsSection() {
             </div>
           </div>
           <p className="text-2xl font-bold text-foreground">{fmt(pendingTotal)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{mockPendingCredits.length} credits in pipeline</p>
+          <p className="text-xs text-muted-foreground mt-1">{pendingCredits.length} credits in pipeline</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-4">
@@ -331,12 +218,12 @@ export default function BuyerEarningsSection() {
             </div>
           </div>
           <span className="text-xs font-semibold text-warning bg-warning/10 px-2.5 py-1 rounded-full">
-            {mockPendingCredits.length} pending
+            {pendingCredits.length} pending
           </span>
         </div>
 
         <div className="divide-y divide-border">
-          {mockPendingCredits.map((credit) => (
+          {pendingCredits.map((credit) => (
             <div key={credit.id} className="px-5 py-4 flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
