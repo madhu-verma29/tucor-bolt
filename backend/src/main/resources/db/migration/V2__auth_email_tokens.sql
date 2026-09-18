@@ -1,0 +1,2 @@
+create table auth_action_tokens(id uuid primary key,user_id uuid not null references users(id) on delete cascade,type varchar(30) not null,token_hash varchar(64) not null unique,expires_at timestamptz not null,used_at timestamptz,created_at timestamptz not null default now());
+create index idx_auth_action_user_type on auth_action_tokens(user_id,type);
