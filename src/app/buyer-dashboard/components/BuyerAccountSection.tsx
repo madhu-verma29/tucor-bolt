@@ -534,20 +534,20 @@ function PaymentMethodsTab() {
 function ContactInfoTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    primaryName: 'Arjun Mehta',
-    primaryRole: 'Procurement Manager',
-    primaryPhone: '+91 98765 43210',
-    primaryEmail: 'arjun.mehta@biofuelindia.in',
-    altName: 'Priya Sharma',
-    altRole: 'Finance Controller',
-    altPhone: '+91 87654 32109',
-    altEmail: 'priya.sharma@biofuelindia.in',
-    warehouseAddress: 'Plot 22, MIDC Taloja Phase II, Navi Mumbai – 410208',
-    warehouseContact: '+91 22 2741 5500',
-    warehouseHours: 'Mon–Sat, 08:00–18:00',
+    primaryName: '',
+    primaryRole: '',
+    primaryPhone: '',
+    primaryEmail: '',
+    altName: '',
+    altRole: '',
+    altPhone: '',
+    altEmail: '',
+    warehouseAddress: '',
+    warehouseContact: '',
+    warehouseHours: '',
   });
 
-  const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(()=>{buyerApi.profile().then(p=>setForm(f=>({...f,primaryName:p.fullName||'',primaryPhone:p.phone||'',primaryEmail:p.email||'',warehouseAddress:[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', '),warehouseContact:p.phone||''}))).catch(()=>{});},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
     <div>
@@ -908,7 +908,7 @@ export default function BuyerAccountSection() {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base font-bold text-foreground">{profile?.businessName||'Buyer'}</h3>
             <span className="badge-active text-xs inline-flex items-center gap-1">
-              <CheckCircle2 size={11} />Verified Buyer
+              <CheckCircle2 size={11} />{profile?.status==='ACTIVE'?'Active Buyer':profile?.status||'Buyer'}
             </span>
           </div>
           <div className="text-xs text-muted-foreground mt-1">
@@ -917,12 +917,12 @@ export default function BuyerAccountSection() {
           <div className="flex items-center gap-4 mt-2 flex-wrap">
             <span className="text-xs text-muted-foreground">📍 {profile ? [profile.city,profile.state].filter(Boolean).join(', ') : '—'}</span>
             <span className="text-xs text-muted-foreground">🏭 {profile?.category||profile?.businessType||'—'}</span>
-            <span className="text-xs text-muted-foreground">📅 Member since Feb 2026</span>
+            <span className="text-xs text-muted-foreground">Account status: {profile?.status||'—'}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <div className="text-xs text-muted-foreground">Trust Score</div>
-          <div className="text-2xl font-bold text-primary font-mono">82<span className="text-sm text-muted-foreground font-normal">/100</span></div>
+          <div className="text-xs text-muted-foreground">Verification</div>
+          <div className="text-sm font-bold text-primary">{profile?.status||"—"}</div>
         </div>
       </div>
 
