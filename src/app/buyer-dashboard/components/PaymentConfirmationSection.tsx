@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { buyerApi } from '@/lib/buyer-api';
 import { CheckCircle2, Download, ShieldCheck, Phone, Mail, MapPin, Calendar, Package, Clock, Truck, CircleDot, Copy, Check, FileText, ArrowRight,  } from 'lucide-react';
 
 interface PaymentConfirmationProps {
@@ -24,23 +25,6 @@ interface PaymentConfirmationProps {
   };
 }
 
-const DEFAULT_ORDER = {
-  oilType: 'Palm',
-  gradeLabel: 'A',
-  volumeLiters: 480,
-  pricePerLiter: 28,
-  oilCost: 13440,
-  transport: 576,
-  platformFee: 202,
-  gst: 2559,
-  total: 16777,
-  deliveryLocation: 'Navi Mumbai Plant — Plot 14, MIDC Industrial Area, Taloja, Navi Mumbai – 410208',
-  pickupDate: '2026-09-12',
-  paymentMethod: 'UPI / Net Banking',
-  transactionRef: 'TXN-2026-NB-88421',
-  paidAt: '2026-09-10 07:36 AM',
-};
-
 const TIMELINE_STEPS = [
   { label: 'Order Placed', description: 'Your order has been submitted to TUCOR', done: true, current: false },
   { label: 'Payment Confirmed', description: 'Payment received and verified by TUCOR', done: true, current: false },
@@ -54,10 +38,13 @@ const TIMELINE_STEPS = [
 
 export default function PaymentConfirmationSection({ onNavigate, orderId, orderData }: PaymentConfirmationProps) {
   const [copiedId, setCopiedId] = useState(false);
-  const [copiedTxn, setCopiedTxn] = useState(false);
+  const [copiedTxn, setCopiedTxn] = useState(false); const [liveOrder,setLiveOrder]=useState<any|null>(null);
 
-  const displayOrderId = orderId ?? 'ORD-2026-0214';
-  const order = orderData ?? DEFAULT_ORDER;
+  useEffect(()=>{if(orderData)return;Promise.all([buyerApi.payments(),buyerApi.orders(),buyerApi.profile()]).then(([ps,os,p])=>{const pay=orderId?ps.find(x=>x.orderId===orderId):ps[0];if(!pay)return;const o=os.find(x=>x.id===pay.orderId);if(!o)return;const oilCost=o.volumeLiters*o.pricePerLiter,transport=o.volumeLiters*1.2,platformFee=oilCost*0.015,gst=(oilCost+transport+platformFee)*0.18;setLiveOrder({id:o.id,oilType:o.oilType,gradeLabel:o.gradeLabel,volumeLiters:o.volumeLiters,pricePerLiter:o.pricePerLiter,oilCost,transport,platformFee,gst,total:pay.amount,deliveryLocation:[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', '),pickupDate:o.pickupDate||'To be scheduled',paymentMethod:'TUCOR payment',transactionRef:pay.reference||pay.id,paidAt:pay.settledDate||'—'})}).catch(()=>{});},[orderId,orderData]);
+  const displayOrderId = orderId ?? liveOrder?.id ?? '—';
+  const order = orderData ?? liveOrder;
+
+  if(!order){return <div className="card p-6 text-sm text-muted-foreground">No confirmed payment is available yet.</div>;} 
 
   const handleCopy = (text: string, type: 'id' | 'txn') => {
     navigator.clipboard.writeText(text).catch(() => {});
