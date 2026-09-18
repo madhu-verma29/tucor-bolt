@@ -446,7 +446,7 @@ function BankAccountTab() {
                 <div className="text-xs text-muted-foreground mt-0.5">IFSC: {acc.ifsc} · Branch: {acc.branch}</div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs font-mono text-foreground">
-                    {showFull === acc.id ? acc.accountNumber.replace(/•/g, '9') : acc.accountNumber}
+                    {acc.accountNumber}
                   </span>
                   <button
                     onClick={() => setShowFull(showFull === acc.id ? null : acc.id)}
