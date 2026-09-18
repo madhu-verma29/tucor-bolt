@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ClipboardList, Package, Bookmark, ShoppingCart, Search, History, TrendingUp, ArrowRight, MapPin, Droplets, CheckCircle2, Clock, Truck, AlertCircle, X, ChevronRight,  } from 'lucide-react';
-import { BuyerOrder, UCOMarketListing } from '@/lib/buyer-mock-data';
+import type { BuyerOrder, UCOMarketListing } from '@/lib/buyer-api';
 import { buyerApi, BuyerProfile } from '@/lib/buyer-api';
 
 interface Props {
