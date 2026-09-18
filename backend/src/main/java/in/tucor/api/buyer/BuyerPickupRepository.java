@@ -1,0 +1,1 @@
+package in.tucor.api.buyer; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface BuyerPickupRepository extends JpaRepository<BuyerPickup,UUID>{List<BuyerPickup> findByBuyerIdOrderByCreatedAtDesc(UUID buyerId);}
