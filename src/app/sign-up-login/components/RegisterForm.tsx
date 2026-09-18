@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Check, Upload, ChevronRight, ChevronLeft, Leaf } from 'lucide-react';
 import { toast } from 'sonner';
+import { authApi } from '@/lib/auth-api';
 
 type Role = 'Seller' | 'Buyer';
 
@@ -113,18 +114,25 @@ export default function RegisterForm({ onLogin }: { onLogin: () => void }) {
     }
   };
 
-  const onSubmit = () => {
-    if (!watch('agreeTerms')) {
+  const onSubmit = async (data: RegisterData) => {
+    if (!data.agreeTerms) {
       toast.error('Please accept the Terms of Service to continue');
       return;
     }
+    if (!role) {
+      toast.error('Please select your role to continue');
+      return;
+    }
     setLoading(true);
-    // BACKEND INTEGRATION: POST /api/auth/register { role, ...formData }
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authApi.register(data.email, data.password, role === 'Buyer' ? 'BUYER' : 'SELLER');
       setSubmitted(true);
-      toast.success('Registration submitted! Check your email for verification.');
-    }, 2000);
+      toast.success('Registration submitted successfully. You can now sign in.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
