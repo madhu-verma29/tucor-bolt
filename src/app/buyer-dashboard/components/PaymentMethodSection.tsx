@@ -110,8 +110,6 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
   useEffect(()=>{if(!orderData)buyerApi.orders().then(o=>setApiOrder(o.find(x=>['Delivered','Payment','Confirmed'].includes(x.status))||null)).catch(()=>{});},[orderData]);
   const order = orderData ?? (apiOrder ? {oilType:apiOrder.oilType,gradeLabel:apiOrder.gradeLabel,volumeLiters:apiOrder.volumeLiters,pricePerLiter:apiOrder.pricePerLiter,oilCost:apiOrder.volumeLiters*apiOrder.pricePerLiter,transport:Math.round(apiOrder.volumeLiters*1.2),platformFee:Math.round(apiOrder.volumeLiters*apiOrder.pricePerLiter*.015),gst:0,total:apiOrder.totalAmount,deliveryLocation:apiOrder.city,pickupDate:apiOrder.pickupDate||'—'} : null);
 
-  if (!order) return <div className="card p-6 text-sm text-muted-foreground">No payable order is currently available.</div>;
-
   const [selectedMethodId, setSelectedMethodId] = useState<PaymentMethodId>('upi');
   const [useSaved, setUseSaved] = useState<string | null>('saved-2');
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -123,6 +121,8 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
   const [savedMethods,setSavedMethods]=useState<any[]>([]);useEffect(()=>{buyerApi.bankAccounts().then(a=>{const m=a.map(x=>({id:x.id,label:`${x.bankName} — ${x.accountNumber}`,type:'netbanking',icon:Building2}));setSavedMethods(m);setUseSaved(m[0]?.id||null)}).catch(()=>setSavedMethods([]));},[]);
 
   const selectedMethod = PAYMENT_METHODS.find((m) => m.id === selectedMethodId)!;
+
+  if (!order) return <div className="card p-6 text-sm text-muted-foreground">No payable order is currently available.</div>;
 
   const handleFieldChange = (fieldId: string, value: string) => {
     setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
@@ -160,7 +160,7 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
     '',
     'Verifying payment details…',
     'Initiating secure transaction…',
-    'Confirming with payment gateway…',
+    'Creating pending payment record…',
   ];
 
   return (
@@ -176,7 +176,7 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
         </button>
         <div>
           <h1 className="text-xl font-bold text-foreground">Payment & Order Review</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Confirm your order details and complete payment securely</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Confirm your order details and initiate payment</p>
         </div>
       </div>
 
@@ -343,7 +343,7 @@ export default function PaymentMethodSection({ onNavigate, orderData }: PaymentM
             ) : (
               <>
                 <Lock size={17} />
-                <span>Pay ₹{order.total.toLocaleString('en-IN')} Securely</span>
+                <span>Initiate Payment · ₹{order.total.toLocaleString('en-IN')}</span>
                 <ChevronRight size={17} />
               </>
             )}
