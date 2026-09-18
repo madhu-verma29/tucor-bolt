@@ -17,7 +17,7 @@ import {
   AlertCircle,
   X,
 } from 'lucide-react';
-import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import type { UCOMarketListing } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
 const DELIVERY_LOCATIONS = [
