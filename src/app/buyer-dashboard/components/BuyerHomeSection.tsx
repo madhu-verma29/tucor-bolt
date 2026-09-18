@@ -33,12 +33,12 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 // Simulated saved listings (pinned from browse)
-const SAVED_LISTING_IDS = ['LST-2026-0041', 'LST-2026-0021', 'LST-2026-0038', 'LST-2026-0018'];
+const SAVED_LISTING_IDS: string[] = [];
 
 export default function BuyerHomeSection({ onNavigate }: Props) {
   const [savedIds, setSavedIds] = useState<string[]>(SAVED_LISTING_IDS);
   const [orders,setOrders]=useState<BuyerOrder[]>([]);const [listings,setListings]=useState<UCOMarketListing[]>([]);const [profile,setProfile]=useState<BuyerProfile|null>(null);
-  useEffect(()=>{Promise.all([buyerApi.orders(),buyerApi.listings(),buyerApi.profile()]).then(([o,l,p])=>{setOrders(o);setListings(l);setProfile(p)}).catch(()=>{});},[]);
+  useEffect(()=>{Promise.all([buyerApi.orders(),buyerApi.listings(),buyerApi.profile(),buyerApi.savedListings()]).then(([o,l,p,s])=>{setOrders(o);setListings(l);setProfile(p);setSavedIds(s)}).catch(()=>{});},[]);
 
   const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status));
   const pendingOrders = orders.filter((o) => PENDING_STATUSES.includes(o.status));
@@ -125,9 +125,7 @@ export default function BuyerHomeSection({ onNavigate }: Props) {
     },
   ];
 
-  const handleUnsave = (id: string) => {
-    setSavedIds((prev) => prev.filter((s) => s !== id));
-  };
+  const handleUnsave = (id: string) => { buyerApi.unsaveListing(id).then(()=>setSavedIds((prev) => prev.filter((s) => s !== id))).catch(()=>{}); };
 
   return (
     <div className="flex flex-col gap-6">
