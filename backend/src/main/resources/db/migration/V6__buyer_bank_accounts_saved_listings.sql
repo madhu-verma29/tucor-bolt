@@ -1,0 +1,3 @@
+create table buyer_bank_accounts(id uuid primary key,buyer_id uuid not null references users(id) on delete cascade,bank_name varchar(120) not null,account_type varchar(40) not null,account_holder_name varchar(180) not null,account_number varchar(40) not null,ifsc varchar(20) not null,branch varchar(180),verified boolean not null default false,is_primary boolean not null default false,created_at timestamptz not null default now());
+create index idx_buyer_bank_accounts_buyer on buyer_bank_accounts(buyer_id);
+create table buyer_saved_listings(buyer_id uuid not null references users(id) on delete cascade,listing_id uuid not null references market_listings(id) on delete cascade,created_at timestamptz not null default now(),primary key(buyer_id,listing_id));
