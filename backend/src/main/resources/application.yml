@@ -1,0 +1,19 @@
+server:
+  port: ${SERVER_PORT:8080}
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/tucor_dev}
+    username: ${DATABASE_USERNAME:uco_user}
+    password: ${DATABASE_PASSWORD:uco_user_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+tucor:
+  jwt:
+    secret: ${JWT_SECRET:change-this-local-development-secret-key-at-least-32-bytes}
+    access-minutes: ${JWT_ACCESS_MINUTES:15}
+    refresh-days: ${JWT_REFRESH_DAYS:30}
+  cors-origins: ${CORS_ORIGINS:http://localhost:3000}
