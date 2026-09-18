@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Search, SlidersHorizontal, MapPin, Droplets, Award, Package, X, ArrowUpDown, Zap } from 'lucide-react';
+import { Search, SlidersHorizontal, MapPin, Droplets, Award, Package, X, ArrowUpDown, Zap, Bookmark } from 'lucide-react';
 import type { UCOMarketListing } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
@@ -45,8 +45,8 @@ interface Props {
 }
 
 export default function UCOSearchSection({ onViewListing }: Props) {
-  const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]);
-  useEffect(()=>{buyerApi.listings().then(setMarketListings).catch(()=>setMarketListings([]));},[]);
+  const [marketListings,setMarketListings]=useState<UCOMarketListing[]>([]); const [savedIds,setSavedIds]=useState<string[]>([]);
+  useEffect(()=>{Promise.all([buyerApi.listings(),buyerApi.savedListings()]).then(([l,s])=>{setMarketListings(l);setSavedIds(s)}).catch(()=>setMarketListings([]));},[]); const toggleSaved=async(id:string)=>{if(savedIds.includes(id)){await buyerApi.unsaveListing(id);setSavedIds(x=>x.filter(v=>v!==id))}else{await buyerApi.saveListing(id);setSavedIds(x=>[...x,id])}};
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'volume_desc' | 'newest'>('newest');
@@ -286,7 +286,7 @@ export default function UCOSearchSection({ onViewListing }: Props) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((listing) => (
-            <ListingCard key={`listing-card-${listing.id}`} listing={listing} onView={onViewListing} />
+            <ListingCard key={`listing-card-${listing.id}`} listing={listing} onView={onViewListing} saved={savedIds.includes(listing.id)} onToggleSaved={toggleSaved} />
           ))}
         </div>
       )}
@@ -294,7 +294,7 @@ export default function UCOSearchSection({ onViewListing }: Props) {
   );
 }
 
-function ListingCard({ listing, onView }: { listing: UCOMarketListing; onView: (l: UCOMarketListing) => void }) {
+function ListingCard({ listing, onView, saved, onToggleSaved }: { listing: UCOMarketListing; onView: (l: UCOMarketListing) => void; saved:boolean; onToggleSaved:(id:string)=>void }) {
   const totalValue = listing.volumeLiters * listing.pricePerLiter;
 
   return (
@@ -367,12 +367,12 @@ function ListingCard({ listing, onView }: { listing: UCOMarketListing; onView: (
         )}
 
         {/* CTA */}
-        <button
+        <div className="flex gap-2"><button onClick={(e)=>{e.stopPropagation();onToggleSaved(listing.id)}} className="btn-secondary px-3" title={saved?'Remove saved listing':'Save listing'}><Bookmark size={15} className={saved?'fill-current':''}/></button><button
           onClick={(e) => { e.stopPropagation(); onView(listing); }}
           className="w-full btn-primary text-sm py-2.5 group-hover:shadow-md transition-shadow duration-200"
         >
           View Details & Request
-        </button>
+        </button></div>
 
         <div className="flex items-center justify-center gap-1.5 mt-2.5 text-xs text-muted-foreground">
           <Zap size={10} className="text-primary" />
