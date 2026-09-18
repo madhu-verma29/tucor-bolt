@@ -1,0 +1,1 @@
+package in.tucor.api.buyer;import org.springframework.data.jpa.repository.JpaRepository;import java.util.*;public interface BuyerSavedListingRepository extends JpaRepository<BuyerSavedListing,BuyerSavedListing.Key>{List<BuyerSavedListing> findByBuyerIdOrderByCreatedAtDesc(UUID buyerId);void deleteByBuyerIdAndListingId(UUID buyerId,UUID listingId);}
