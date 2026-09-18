@@ -73,18 +73,18 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
 function CompanyDetailsTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    businessName: 'BioFuel India Pvt. Ltd.',
-    tradeName: 'BioFuel India',
-    businessType: 'Private Limited Company',
-    category: 'Biodiesel Manufacturer',
-    pan: 'AABCB1234C',
-    cin: 'U24100MH2018PTC312345',
-    yearEstablished: '2018',
-    website: 'www.biofuelindia.in',
-    address: '22, MIDC Industrial Area, Taloja Phase II',
-    city: 'Navi Mumbai',
-    state: 'Maharashtra',
-    pincode: '410208',
+    businessName: '',
+    tradeName: '',
+    businessType: '',
+    category: '',
+    pan: '',
+    cin: '',
+    yearEstablished: '',
+    website: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
     country: 'India',
   });
 
@@ -380,7 +380,7 @@ interface BankAccount {
 
 function BankAccountTab() {
   const [showFull, setShowFull] = useState<string | null>(null);
-  const [accounts] = useState<BankAccount[]>([
+  const [accounts,setAccounts] = useState<BankAccount[]>([]); const [bankForm,setBankForm]=useState({accountHolderName:'',bankName:'',accountNumber:'',confirmAccountNumber:'',ifsc:'',accountType:'Current Account'}); useEffect(()=>{buyerApi.bankAccounts().then(setAccounts).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank accounts'));},[]); const addBank=async()=>{if(!bankForm.accountHolderName||!bankForm.bankName||!bankForm.accountNumber||!bankForm.ifsc){toast.error('Complete required bank details');return}if(bankForm.accountNumber!==bankForm.confirmAccountNumber){toast.error('Account numbers do not match');return}try{await buyerApi.addBankAccount(bankForm);setAccounts(await buyerApi.bankAccounts());setBankForm({accountHolderName:'',bankName:'',accountNumber:'',confirmAccountNumber:'',ifsc:'',accountType:'Current Account'});toast.success('Bank account added')}catch(e){toast.error(e instanceof Error?e.message:'Unable to add account')}}; const setPrimary=async(id:string)=>{await buyerApi.setPrimaryBank(id);setAccounts(await buyerApi.bankAccounts())};const removeBank=async(id:string)=>{await buyerApi.deleteBank(id);setAccounts(await buyerApi.bankAccounts())}; /*
     {
       id: 'ba-1',
       bankName: 'HDFC Bank',
@@ -401,7 +401,7 @@ function BankAccountTab() {
       verified: true,
       primary: false,
     },
-  ]);
+*/
 
   return (
     <div>
@@ -458,9 +458,9 @@ function BankAccountTab() {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {!acc.primary && (
-                  <button className="btn-ghost text-xs px-2.5 py-1.5">Set Primary</button>
+                  <button onClick={()=>setPrimary(acc.id)} className="btn-ghost text-xs px-2.5 py-1.5">Set Primary</button>
                 )}
-                <button className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
+                <button onClick={()=>removeBank(acc.id)} className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -481,12 +481,12 @@ function BankAccountTab() {
           ].map(({ label, placeholder }) => (
             <div key={label}>
               <label className="label-text">{label}</label>
-              <input className="input-field" placeholder={placeholder} />
+              <input className="input-field" placeholder={placeholder} value={bankForm[({ 'Account Holder Name':'accountHolderName','Bank Name':'bankName','Account Number':'accountNumber','Confirm Account Number':'confirmAccountNumber','IFSC Code':'ifsc','Account Type':'accountType'} as Record<string,keyof typeof bankForm>)[label]]} onChange={e=>setBankForm(f=>({...f,[({ 'Account Holder Name':'accountHolderName','Bank Name':'bankName','Account Number':'accountNumber','Confirm Account Number':'confirmAccountNumber','IFSC Code':'ifsc','Account Type':'accountType'} as Record<string,string>)[label]]:e.target.value}))} />
             </div>
           ))}
         </div>
         <div className="mt-4 flex gap-2">
-          <button className="btn-primary text-xs px-4 py-2 gap-1.5">
+          <button onClick={addBank} className="btn-primary text-xs px-4 py-2 gap-1.5">
             <Plus size={13} />Add & Verify Account
           </button>
           <button className="btn-ghost text-xs px-4 py-2">Cancel</button>
@@ -501,20 +501,20 @@ function BankAccountTab() {
 function ContactInfoTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    primaryName: 'Arjun Mehta',
-    primaryRole: 'Procurement Manager',
-    primaryPhone: '+91 98765 43210',
-    primaryEmail: 'arjun.mehta@biofuelindia.in',
-    altName: 'Priya Sharma',
-    altRole: 'Finance Controller',
-    altPhone: '+91 87654 32109',
-    altEmail: 'priya.sharma@biofuelindia.in',
-    warehouseAddress: 'Plot 22, MIDC Taloja Phase II, Navi Mumbai – 410208',
-    warehouseContact: '+91 22 2741 5500',
-    warehouseHours: 'Mon–Sat, 08:00–18:00',
+    primaryName: '',
+    primaryRole: '',
+    primaryPhone: '',
+    primaryEmail: '',
+    altName: '',
+    altRole: '',
+    altPhone: '',
+    altEmail: '',
+    warehouseAddress: '',
+    warehouseContact: '',
+    warehouseHours: '',
   });
 
-  const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(()=>{buyerApi.profile().then(p=>setForm(f=>({...f,primaryName:p.fullName||'',primaryPhone:p.phone||'',primaryEmail:p.email||'',warehouseAddress:[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', '),warehouseContact:p.phone||''}))).catch(()=>{});},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
     <div>
