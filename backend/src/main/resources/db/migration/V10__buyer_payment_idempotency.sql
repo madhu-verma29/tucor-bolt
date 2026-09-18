@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS uq_buyer_payment_active_order ON buyer_payments(order_id) WHERE status IN ('Pending','Processing','Settled');
