@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, CheckCircle2, XCircle, Download, Search, Calendar, MapPin, Package } from 'lucide-react';
-import { BuyerOrder, mockBuyerPayments } from '@/lib/buyer-mock-data';
+import type { BuyerOrder, BuyerPayment } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
 // BACKEND INTEGRATION: GET /api/buyer/orders?status=completed,settled,cancelled,rejected
@@ -24,7 +24,7 @@ const gradeColors: Record<string, string> = {
 };
 
 export default function PurchaseHistorySection() {
-  const [apiOrders,setApiOrders]=useState<BuyerOrder[]>([]);useEffect(()=>{buyerApi.orders().then(setApiOrders).catch(()=>setApiOrders([]));},[]);
+  const [apiOrders,setApiOrders]=useState<BuyerOrder[]>([]); const [payments,setPayments]=useState<BuyerPayment[]>([]);useEffect(()=>{Promise.all([buyerApi.orders(),buyerApi.payments()]).then(([o,p])=>{setApiOrders(o);setPayments(p)}).catch(()=>{setApiOrders([]);setPayments([])});},[]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,7 +121,7 @@ export default function PurchaseHistorySection() {
         <div className="flex flex-col gap-3">
           {filtered.map((order) => {
             const isExpanded = expandedId === order.id;
-            const payment = mockBuyerPayments.find((p) => p.orderId === order.id);
+            const payment = payments.find((p) => p.orderId === order.id);
             const isCompleted = ['Completed', 'Settled'].includes(order.status);
 
             return (
