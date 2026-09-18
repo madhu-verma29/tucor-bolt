@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Search, SlidersHorizontal, MapPin, Droplets, Award, Package, X, ArrowUpDown, Zap } from 'lucide-react';
-import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import type { UCOMarketListing } from '@/lib/buyer-api';
 import { buyerApi } from '@/lib/buyer-api';
 
 interface Filters {
