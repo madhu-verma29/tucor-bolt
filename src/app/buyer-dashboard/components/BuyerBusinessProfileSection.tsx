@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { buyerApi } from '@/lib/buyer-api';
+import { toast } from 'sonner';
 import { Building2, ShieldCheck, Landmark, Phone, Settings, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, EyeOff, Upload, ChevronRight, MapPin, Info, RefreshCw, Hash, Plus, Trash2, ToggleLeft, ToggleRight, Star, Lock, Globe,  } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -86,7 +88,9 @@ function CompanyDetailsTab() {
     country: 'India',
   });
 
+  useEffect(()=>{buyerApi.profile().then(p=>setForm(f=>({...f,businessName:p.businessName||'',tradeName:p.tradeName||'',businessType:p.businessType||'',category:p.category||'',pan:p.pan||'',cin:p.cin||'',yearEstablished:p.yearEstablished||'',website:p.website||'',address:p.address||'',city:p.city||'',state:p.state||'',pincode:p.pincode||'',country:p.country||'India'}))).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load profile'));},[]);
   const handleChange = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+  const saveCompany=async()=>{try{const current=await buyerApi.profile();await buyerApi.updateProfile({...current,...form});setEditing(false);toast.success('Business profile saved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to save profile')}};
 
   return (
     <div>
@@ -99,7 +103,7 @@ function CompanyDetailsTab() {
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5">
                 <X size={13} />Cancel
               </button>
-              <button onClick={() => setEditing(false)} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
+              <button onClick={saveCompany} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
                 <Save size={13} />Save
               </button>
             </div>
