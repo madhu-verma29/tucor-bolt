@@ -1,0 +1,1 @@
+package in.tucor.api.auth; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface AuthActionTokenRepository extends JpaRepository<AuthActionToken,UUID>{Optional<AuthActionToken> findByTokenHashAndType(String tokenHash,String type);}
