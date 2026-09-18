@@ -1,13 +1,17 @@
 package in.tucor.api.buyer;
 import in.tucor.api.auth.*; import jakarta.validation.Valid; import jakarta.validation.constraints.*; import org.springframework.security.core.Authentication; import org.springframework.security.crypto.password.PasswordEncoder; import org.springframework.web.bind.annotation.*; import org.springframework.transaction.annotation.Transactional; import java.util.*;
 @RestController @RequestMapping("/api/buyer/settings") public class BuyerSettingsController {
- private final UserRepository users; private final RegistrationProfileRepository profiles; private final PasswordEncoder encoder;
- public BuyerSettingsController(UserRepository u,RegistrationProfileRepository p,PasswordEncoder e){users=u;profiles=p;encoder=e;}
+ private final UserRepository users; private final RegistrationProfileRepository profiles; private final PasswordEncoder encoder; private final BuyerNotificationPreferenceRepository prefs;
+ public BuyerSettingsController(UserRepository u,RegistrationProfileRepository p,PasswordEncoder e,BuyerNotificationPreferenceRepository n){users=u;profiles=p;encoder=e;prefs=n;}
  public record Account(String fullName,String email,String phone,String gstNumber,String businessName){}
  public record AccountUpdate(@NotBlank String fullName,@Pattern(regexp="^[6-9][0-9]{9}$") String phone){}
+ public record Notifications(boolean emailOrders,boolean emailPickups,boolean emailPayments,boolean smsPickups,boolean smsPayments,boolean appAll){}
  public record PasswordChange(@NotBlank String currentPassword,@Size(min=8) String newPassword){}
  @GetMapping("/account") public Account account(Authentication a){User u=user(a);RegistrationProfile p=profiles.findById(u.id).orElseThrow();return new Account(p.fullName,u.email,p.phone,p.gstNumber,p.businessName);}
  @PutMapping("/account") @Transactional public Account account(Authentication a,@Valid @RequestBody AccountUpdate r){User u=user(a);RegistrationProfile p=profiles.findById(u.id).orElseThrow();p.fullName=r.fullName();p.phone=r.phone();profiles.save(p);return new Account(p.fullName,u.email,p.phone,p.gstNumber,p.businessName);}
+ @GetMapping("/notifications") public Notifications notifications(Authentication a){User u=user(a);BuyerNotificationPreference p=prefs.findById(u.id).orElseGet(()->{BuyerNotificationPreference n=new BuyerNotificationPreference();n.buyerId=u.id;return prefs.save(n);});return dto(p);}
+ @PutMapping("/notifications") @Transactional public Notifications notifications(Authentication a,@RequestBody Notifications r){User u=user(a);BuyerNotificationPreference p=prefs.findById(u.id).orElseGet(()->{BuyerNotificationPreference n=new BuyerNotificationPreference();n.buyerId=u.id;return n;});p.emailOrders=r.emailOrders();p.emailPickups=r.emailPickups();p.emailPayments=r.emailPayments();p.smsPickups=r.smsPickups();p.smsPayments=r.smsPayments();p.appAll=r.appAll();return dto(prefs.save(p));}
  @PutMapping("/password") @Transactional public void password(Authentication a,@Valid @RequestBody PasswordChange r){User u=user(a);if(!encoder.matches(r.currentPassword(),u.passwordHash))throw new IllegalArgumentException("Current password is incorrect");u.passwordHash=encoder.encode(r.newPassword());u.failedLoginAttempts=0;u.lockedUntil=null;users.save(u);}
+ private Notifications dto(BuyerNotificationPreference p){return new Notifications(p.emailOrders,p.emailPickups,p.emailPayments,p.smsPickups,p.smsPayments,p.appAll);}
  private User user(Authentication a){User u=users.findById(UUID.fromString(a.getName())).orElseThrow();if(u.role!=Role.BUYER)throw new IllegalArgumentException("Buyer account required");return u;}
 }
