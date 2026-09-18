@@ -1,5 +1,6 @@
 'use client';
 
+import { buyerApi } from '@/lib/buyer-api';
 import React, { useState, useRef } from 'react';
 import { Bell, Shield, User, Eye, EyeOff, Save, Smartphone, Mail, CheckCircle2, CreditCard, Undo2, X, AlertCircle } from 'lucide-react';
 
@@ -252,7 +253,7 @@ export default function BuyerSettingsSection() {
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">GST Number</label>
               <input
                 type="text"
-                value="29AABCB1234C1ZB"
+                value={accountForm.gstNumber || ''}
                 disabled
                 className="w-full px-3.5 py-2.5 text-sm bg-muted/50 border border-border rounded-xl text-muted-foreground cursor-not-allowed"
               />
@@ -394,13 +395,10 @@ export default function BuyerSettingsSection() {
                 <Smartphone size={16} className="text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">SMS Authentication</p>
-                  <p className="text-xs text-muted-foreground">Verify login with OTP on +91 98765 43210</p>
+                  <p className="text-xs text-muted-foreground">SMS authentication is not enabled until an OTP provider is configured</p>
                 </div>
               </div>
-              <span className="badge-active text-xs flex items-center gap-1">
-                <CheckCircle2 size={11} />
-                Enabled
-              </span>
+              <span className="badge-muted text-xs">Not configured</span>
             </div>
           </div>
         </div>
@@ -418,12 +416,12 @@ export default function BuyerSettingsSection() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { label: 'Company Name', value: 'BioFuel India Pvt. Ltd.' },
-              { label: 'Bank Name', value: 'ICICI Bank' },
-              { label: 'Account Number', value: '••••••••7234' },
-              { label: 'IFSC Code', value: 'ICIC0001234' },
-              { label: 'Account Type', value: 'Current Account' },
-              { label: 'Default Payment', value: 'Bank Transfer (NEFT/RTGS)' },
+              { label: 'Company Name', value: accountForm.businessName || '—' },
+              { label: 'Bank Name', value: accountForm.bankName || '—' },
+              { label: 'Account Number', value: accountForm.bankAccount || '—' },
+              { label: 'IFSC Code', value: accountForm.ifsc || '—' },
+              { label: 'Account Type', value: accountForm.accountType || '—' },
+              { label: 'Default Payment', value: accountForm.bankName ? 'Linked bank account' : 'Not configured' },
             ].map((field) => (
               <div key={`buyer-pay-field-${field.label}`}>
                 <label className="block text-xs font-semibold text-muted-foreground mb-1.5">{field.label}</label>
