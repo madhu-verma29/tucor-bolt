@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, ShoppingCart, History, TrendingUp, Leaf, Droplets } from 'lucide-react';
-import { mockBuyerOrders, mockMarketListings, buyerProfile } from '@/lib/buyer-mock-data';
+import type { BuyerOrder, UCOMarketListing } from '@/lib/buyer-mock-data';
+import { buyerApi, BuyerProfile, DashboardMetrics } from '@/lib/buyer-api';
 import Icon from '@/components/ui/AppIcon';
 
 
@@ -13,9 +14,11 @@ interface Props {
 const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment'];
 
 export default function BuyerOverviewSection({ onNavigate }: Props) {
-  const activeOrders = mockBuyerOrders.filter((o) => ACTIVE_STATUSES.includes(o.status));
-  const completedOrders = mockBuyerOrders.filter((o) => ['Completed', 'Settled'].includes(o.status));
-  const availableListings = mockMarketListings.filter((l) => l.status === 'Available').length;
+  const [orders,setOrders]=useState<BuyerOrder[]>([]); const [listings,setListings]=useState<UCOMarketListing[]>([]); const [profile,setProfile]=useState<BuyerProfile|null>(null); const [metrics,setMetrics]=useState<DashboardMetrics|null>(null);
+  useEffect(()=>{Promise.all([buyerApi.orders(),buyerApi.listings(),buyerApi.profile(),buyerApi.dashboard()]).then(([o,l,p,m])=>{setOrders(o);setListings(l);setProfile(p);setMetrics(m)}).catch(()=>{});},[]);
+  const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status));
+  const completedOrders = orders.filter((o) => ['Completed', 'Settled'].includes(o.status));
+  const availableListings = metrics?.availableListings ?? listings.filter((l) => l.status === 'Available').length;
 
   const kpis = [
     {
@@ -38,7 +41,7 @@ export default function BuyerOverviewSection({ onNavigate }: Props) {
     },
     {
       label: 'UCO Sourced',
-      value: `${buyerProfile.totalUCOSourced.toLocaleString('en-IN')} L`,
+      value: `${(metrics?.totalUcoSourced ?? 0).toLocaleString('en-IN')} L`,
       sub: 'total procured',
       icon: Droplets,
       color: 'text-teal-600 dark:text-teal-400',
@@ -47,7 +50,7 @@ export default function BuyerOverviewSection({ onNavigate }: Props) {
     },
     {
       label: 'Total Spend',
-      value: `₹${(buyerProfile.totalSpend / 100000).toFixed(1)}L`,
+      value: `₹${((metrics?.totalSpend ?? 0) / 100000).toFixed(1)}L`,
       sub: 'settled payments',
       icon: TrendingUp,
       color: 'text-purple-600 dark:text-purple-400',
@@ -56,7 +59,7 @@ export default function BuyerOverviewSection({ onNavigate }: Props) {
     },
     {
       label: 'CO₂ Offset',
-      value: `${buyerProfile.co2OffsetKg.toLocaleString('en-IN')} kg`,
+      value: `${(metrics?.co2OffsetKg ?? 0).toLocaleString('en-IN')} kg`,
       sub: 'estimated impact',
       icon: Leaf,
       color: 'text-success',
@@ -78,7 +81,7 @@ export default function BuyerOverviewSection({ onNavigate }: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Good morning, Arjun 👋</h1>
+          <h1 className="text-2xl font-bold text-foreground">Good morning, {profile?.fullName?.split(' ')[0] || 'Buyer'} 👋</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Your UCO procurement overview — Sep 9, 2026
           </p>
@@ -146,7 +149,7 @@ export default function BuyerOverviewSection({ onNavigate }: Props) {
             <button onClick={() => onNavigate('search')} className="text-xs text-primary font-semibold hover:underline">Browse all</button>
           </div>
           <div className="flex flex-col gap-2">
-            {mockMarketListings.slice(0, 4).map((listing) => (
+            {listings.slice(0, 4).map((listing) => (
               <div key={`overview-listing-${listing.id}`} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors duration-100">
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold text-foreground">{listing.oilType} Oil — Grade {listing.gradeLabel}</div>
