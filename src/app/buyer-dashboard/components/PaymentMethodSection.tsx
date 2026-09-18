@@ -119,11 +119,6 @@ const DEFAULT_ORDER = {
   pickupDate: '2026-09-18',
 };
 
-const DEMO_SAVED_METHODS = [
-  { id: 'saved-1', label: 'HDFC Bank — ••••4821', type: 'netbanking', icon: Building2 },
-  { id: 'saved-2', label: 'arjun.mehta@okaxis', type: 'upi', icon: Smartphone },
-];
-
 export default function PaymentMethodSection({ onNavigate, orderData }: PaymentMethodSectionProps) {
   const order = orderData ?? DEFAULT_ORDER;
 
