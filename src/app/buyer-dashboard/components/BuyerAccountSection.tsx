@@ -90,7 +90,7 @@ function CompanyDetailsTab() {
 
   useEffect(()=>{buyerApi.profile().then(p=>setForm({businessName:p.businessName||'',tradeName:p.tradeName||'',businessType:p.businessType||'',category:p.category||'',pan:p.pan||'',cin:p.cin||'',yearEstablished:p.yearEstablished||'',website:p.website||'',address:p.address||'',city:p.city||'',state:p.state||'',pincode:p.pincode||'',country:p.country||'India'})).catch(()=>{});},[]);
   const handleChange = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
-  const save=async()=>{try{const p=await buyerApi.profile();await buyerApi.updateProfile({...p,...form});setEditing(false)}catch{}};
+  const save=async()=>{try{await buyerApi.updateProfile(form);setEditing(false)}catch{}};
 
   return (
     <div>

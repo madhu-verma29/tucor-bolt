@@ -91,7 +91,7 @@ function CompanyDetailsTab() {
 
   useEffect(()=>{buyerApi.profile().then(p=>setForm(f=>({...f,businessName:p.businessName||'',tradeName:p.tradeName||'',businessType:p.businessType||'',category:p.category||'',pan:p.pan||'',cin:p.cin||'',yearEstablished:p.yearEstablished||'',website:p.website||'',address:p.address||'',city:p.city||'',state:p.state||'',pincode:p.pincode||'',country:p.country||'India'}))).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load profile'));},[]);
   const handleChange = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
-  const saveCompany=async()=>{try{const current=await buyerApi.profile();await buyerApi.updateProfile({...current,...form});setEditing(false);toast.success('Business profile saved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to save profile')}};
+  const saveCompany=async()=>{try{await buyerApi.updateProfile(form);setEditing(false);toast.success('Business profile saved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to save profile')}};
 
   return (
     <div>
@@ -412,7 +412,7 @@ function ContactInfoTab() {
     warehouseHours: '',
   });
 
-  useEffect(()=>{buyerApi.profile().then(p=>setForm(f=>({...f,primaryName:p.fullName||'',primaryPhone:p.phone||'',primaryEmail:p.email||'',warehouseAddress:[p.address,p.city,p.state,p.pincode].filter(Boolean).join(', '),warehouseContact:p.phone||''}))).catch(()=>{});},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(()=>{buyerApi.contacts().then(setForm).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load contact details'));},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
     <div>
@@ -425,7 +425,7 @@ function ContactInfoTab() {
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5">
                 <X size={13} />Cancel
               </button>
-              <button onClick={() => setEditing(false)} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
+              <button onClick={async()=>{try{setForm(await buyerApi.updateContacts(form));setEditing(false);toast.success('Contact details saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save contact details')}}} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
                 <Save size={13} />Save
               </button>
             </div>
