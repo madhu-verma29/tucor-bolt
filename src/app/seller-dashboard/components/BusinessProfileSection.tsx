@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Building2, MapPin, Phone, Landmark, Edit3, Save, X, CheckCircle2, Clock, AlertCircle, XCircle, RefreshCw, Droplets, Calendar, Users, Truck,  } from 'lucide-react';
+import { toast } from 'sonner';
+import { sellerApi, type SellerProfile } from '@/lib/seller-api';
 
 type VerificationStatus = 'verified' | 'pending' | 'under_review' | 'rejected' | 'not_submitted';
 
@@ -59,16 +61,10 @@ function EditableField({ label, value, onChange, type = 'text' }: { label: strin
 function CompanyDetailsTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    businessName: 'Spice Route Kitchens Pvt. Ltd.',
-    tradeName: 'Spice Route Kitchens',
-    businessType: 'Private Limited Company',
-    category: 'Restaurant / Cloud Kitchen',
-    pan: 'AABCS1429B',
-    cin: 'U55101MH2019PTC321456',
-    yearEstablished: '2019',
-    website: 'www.spiceroutekitchens.in',
+    businessName: '', tradeName: '', businessType: '', category: '', pan: '', cin: '', yearEstablished: '', website: '',
   });
-  const saved = { ...form };
+  useEffect(()=>{sellerApi.profile().then(p=>setForm({businessName:p.businessName,tradeName:p.tradeName,businessType:p.businessType,category:p.category,pan:p.pan,cin:p.cin,yearEstablished:p.yearEstablished,website:p.website})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load profile'))},[]);
+  const save=async()=>{try{await sellerApi.updateProfile(form);setEditing(false);toast.success('Company details saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save company details')}};
 
   return (
     <SectionCard
@@ -78,7 +74,7 @@ function CompanyDetailsTab() {
         editing ? (
           <div className="flex gap-2">
             <button onClick={() => setEditing(false)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><X size={13} />Cancel</button>
-            <button onClick={() => setEditing(false)} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
+            <button onClick={save} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
           </div>
         ) : (
           <button onClick={() => setEditing(true)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><Edit3 size={13} />Edit</button>
@@ -116,18 +112,10 @@ function CompanyDetailsTab() {
 function ContactAddressTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    primaryContact: 'Priya Nambiar',
-    designation: 'Owner / Manager',
-    phone: '+91 98765 43210',
-    altPhone: '+91 98765 00001',
-    email: 'priya@spiceroutekitchens.in',
-    addressLine1: '14, Andheri Industrial Estate',
-    addressLine2: 'Andheri East',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    pincode: '400069',
-    gstState: 'Maharashtra (27)',
+    primaryContact: '', designation: '', phone: '', altPhone: '', email: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', gstState: '',
   });
+  useEffect(()=>{sellerApi.profile().then(p=>setForm({primaryContact:p.primaryContact,designation:p.designation,phone:p.phone,altPhone:p.altPhone,email:p.contactEmail,addressLine1:p.addressLine1,addressLine2:p.addressLine2,city:p.city,state:p.state,pincode:p.pincode,gstState:p.gstState})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load contact details'))},[]);
+  const save=async()=>{try{await sellerApi.updateProfile({primaryContact:form.primaryContact,designation:form.designation,phone:form.phone,altPhone:form.altPhone,contactEmail:form.email,addressLine1:form.addressLine1,addressLine2:form.addressLine2,city:form.city,state:form.state,pincode:form.pincode,gstState:form.gstState});setEditing(false);toast.success('Contact details saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save contact details')}};
 
   return (
     <SectionCard
@@ -137,7 +125,7 @@ function ContactAddressTab() {
         editing ? (
           <div className="flex gap-2">
             <button onClick={() => setEditing(false)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><X size={13} />Cancel</button>
-            <button onClick={() => setEditing(false)} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
+            <button onClick={save} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
           </div>
         ) : (
           <button onClick={() => setEditing(true)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><Edit3 size={13} />Edit</button>
@@ -179,17 +167,10 @@ function ContactAddressTab() {
 function OperationalDataTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    kitchenType: 'Cloud Kitchen + Dine-in',
-    seatingCapacity: '45',
-    avgDailyCovers: '120',
-    operatingDays: 'Monday – Sunday',
-    operatingHours: '10:00 AM – 11:00 PM',
-    cuisineTypes: 'South Indian, North Indian, Continental',
-    avgMonthlyUCO: '180',
-    storageCapacity: '500',
-    collectionFrequency: 'Weekly',
-    preferredPickupDay: 'Wednesday',
+    kitchenType: '', seatingCapacity: '', avgDailyCovers: '', operatingDays: '', operatingHours: '', cuisineTypes: '', avgMonthlyUCO: '', storageCapacity: '', collectionFrequency: '', preferredPickupDay: '',
   });
+  useEffect(()=>{sellerApi.profile().then(p=>setForm({kitchenType:p.kitchenType,seatingCapacity:p.seatingCapacity,avgDailyCovers:p.avgDailyCovers,operatingDays:p.operatingDays,operatingHours:p.operatingHours,cuisineTypes:p.cuisineTypes,avgMonthlyUCO:p.avgMonthlyUco,storageCapacity:p.storageCapacity,collectionFrequency:p.collectionFrequency,preferredPickupDay:p.preferredPickupDay})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load operational data'))},[]);
+  const save=async()=>{try{await sellerApi.updateProfile({kitchenType:form.kitchenType,seatingCapacity:form.seatingCapacity,avgDailyCovers:form.avgDailyCovers,operatingDays:form.operatingDays,operatingHours:form.operatingHours,cuisineTypes:form.cuisineTypes,avgMonthlyUco:form.avgMonthlyUCO,storageCapacity:form.storageCapacity,collectionFrequency:form.collectionFrequency,preferredPickupDay:form.preferredPickupDay});setEditing(false);toast.success('Operational data saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save operational data')}};
 
   return (
     <SectionCard
@@ -199,7 +180,7 @@ function OperationalDataTab() {
         editing ? (
           <div className="flex gap-2">
             <button onClick={() => setEditing(false)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><X size={13} />Cancel</button>
-            <button onClick={() => setEditing(false)} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
+            <button onClick={save} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
           </div>
         ) : (
           <button onClick={() => setEditing(true)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><Edit3 size={13} />Edit</button>
@@ -241,14 +222,10 @@ function OperationalDataTab() {
 function BankingTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    accountName: 'Spice Route Kitchens Pvt. Ltd.',
-    accountNumber: '••••••••4521',
-    bankName: 'HDFC Bank',
-    branch: 'Andheri East, Mumbai',
-    ifsc: 'HDFC0001234',
-    accountType: 'Current Account',
-    upiId: 'spiceroute@hdfcbank',
+    accountName: '', accountNumber: '', bankName: '', branch: '', ifsc: '', accountType: '', upiId: '',
   });
+  useEffect(()=>{sellerApi.bankAccount().then(b=>setForm({accountName:b.accountHolder,accountNumber:b.accountNumber,bankName:b.bankName,branch:b.branch,ifsc:b.ifsc,accountType:b.accountType,upiId:b.upiId})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank details'))},[]);
+  const save=async()=>{try{await sellerApi.updateBankAccount({accountHolder:form.accountName,accountNumber:form.accountNumber,bankName:form.bankName,branch:form.branch,ifsc:form.ifsc,accountType:form.accountType,upiId:form.upiId});setEditing(false);toast.success('Bank details saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save bank details')}};
 
   return (
     <SectionCard
@@ -258,7 +235,7 @@ function BankingTab() {
         editing ? (
           <div className="flex gap-2">
             <button onClick={() => setEditing(false)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><X size={13} />Cancel</button>
-            <button onClick={() => setEditing(false)} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
+            <button onClick={save} className="btn-primary py-1.5 px-3 text-xs gap-1"><Save size={13} />Save</button>
           </div>
         ) : (
           <button onClick={() => setEditing(true)} className="btn-ghost py-1.5 px-3 text-xs gap-1"><Edit3 size={13} />Edit</button>
@@ -292,6 +269,8 @@ const TABS = [
 
 export default function BusinessProfileSection() {
   const [activeTab, setActiveTab] = useState('company');
+  const [profile,setProfile]=useState<SellerProfile|null>(null);
+  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{})},[]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -311,11 +290,11 @@ export default function BusinessProfileSection() {
       {/* Profile summary card */}
       <div className="card p-5 flex items-center gap-5 flex-wrap">
         <div className="w-16 h-16 rounded-2xl gradient-card-green flex items-center justify-center text-white font-extrabold text-2xl flex-shrink-0">
-          S
+          {(profile?.businessName||'S').charAt(0)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-lg font-bold text-foreground">Spice Route Kitchens Pvt. Ltd.</div>
-          <div className="text-sm text-muted-foreground mt-0.5">Restaurant / Cloud Kitchen · Mumbai, Maharashtra</div>
+          <div className="text-lg font-bold text-foreground">{profile?.businessName||'—'}</div>
+          <div className="text-sm text-muted-foreground mt-0.5">{profile?.category||'—'} · {profile?.city||'—'}, {profile?.state||'—'}</div>
           <div className="flex flex-wrap gap-2 mt-2">
             <span className="badge-active text-xs">FSSAI Verified</span>
             <span className="badge-active text-xs">GST Registered</span>
@@ -324,7 +303,7 @@ export default function BusinessProfileSection() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
           {[
-            { icon: Droplets, label: 'Avg UCO/mo', value: '180 L' },
+            { icon: Droplets, label: 'Avg UCO/mo', value: profile?.avgMonthlyUco?`${profile.avgMonthlyUco} L`:'—' },
             { icon: Calendar, label: 'Member Since', value: 'Mar 2026' },
             { icon: Truck, label: 'Pickups Done', value: '24' },
             { icon: Users, label: 'Active Orders', value: '3' },

@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CheckCircle2, Clock, AlertCircle, XCircle, RefreshCw, Upload,
   FileText, ShieldCheck, ChevronRight, Info, Download,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { downloadSellerDocument, sellerApi, uploadSellerDocument, type SellerDocument } from '@/lib/seller-api';
 
 type DocStatus = 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted' | 'Expired';
 type OverallStatus = 'verified' | 'pending' | 'under_review' | 'rejected';
@@ -67,20 +69,20 @@ const statusConfig: Record<DocStatus, { cls: string; icon: React.ReactNode; labe
   Expired: { cls: 'badge-danger', icon: <AlertCircle size={12} />, label: 'Expired' },
 };
 
-const timelineEvents = [
-  { date: 'Sep 5, 2026', event: 'PAN Card submitted for review', status: 'pending' },
-  { date: 'Mar 12, 2026', event: 'Address Proof and Bank Details verified', status: 'done' },
-  { date: 'Mar 10, 2026', event: 'FSSAI License and GST Certificate verified', status: 'done' },
-  { date: 'Mar 8, 2026', event: 'Verification application submitted', status: 'done' },
-  { date: 'Mar 5, 2026', event: 'Seller account created on TUCOR', status: 'done' },
-];
-
 export default function SellerVerificationSection() {
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
+  const [docs,setDocs]=useState<ComplianceDoc[]>(mockDocs.map(d=>({...d,status:'Not Submitted' as DocStatus,submittedAt:undefined,expiresAt:undefined,rejectionReason:undefined})));
+  const apiDocs=React.useRef<Record<string,SellerDocument>>({});
+  const typeById:Record<string,string>={fssai:'FSSAI',gst:'GST',address:'ADDRESS_PROOF',bank:'BANK_PROOF',pan:'PAN',trade:'TRADE_LICENSE',pollution:'POLLUTION_CERTIFICATE'};
+  const load=()=>sellerApi.documents().then(items=>{apiDocs.current=Object.fromEntries(items.map(d=>[d.type,d]));setDocs(mockDocs.map(template=>{const d=apiDocs.current[typeById[template.id]];return d?{...template,status:(d.status==='VERIFIED'?'Verified':d.status==='REJECTED'?'Rejected':d.status==='EXPIRED'?'Expired':'Pending') as DocStatus,submittedAt:d.uploadedAt.slice(0,10),expiresAt:d.expiresAt||undefined,rejectionReason:d.rejectionReason||undefined}:{...template,status:'Not Submitted',submittedAt:undefined,expiresAt:undefined,rejectionReason:undefined}}))});
+  useEffect(()=>{load().catch(e=>toast.error(e instanceof Error?e.message:'Unable to load verification documents'))},[]);
+  const upload=(doc:ComplianceDoc)=>{const input=document.createElement('input');input.type='file';input.accept='.pdf,.png,.jpg,.jpeg';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{await uploadSellerDocument(typeById[doc.id],file);await load();toast.success(`${doc.name} uploaded`)}catch(e){toast.error(e instanceof Error?e.message:'Upload failed')}};input.click()};
+  const download=async(doc:ComplianceDoc)=>{const d=apiDocs.current[typeById[doc.id]];if(!d)return;try{await downloadSellerDocument(d.id,d.name)}catch(e){toast.error(e instanceof Error?e.message:'Download failed')}};
 
-  const verified = mockDocs.filter((d) => d.status === 'Verified').length;
-  const total = mockDocs.filter((d) => d.required).length;
+  const verified = docs.filter((d) => d.status === 'Verified').length;
+  const total = docs.filter((d) => d.required).length;
   const overallStatus: OverallStatus = verified >= total ? 'verified' : 'under_review';
+  const timelineEvents=docs.filter(d=>d.submittedAt).map(d=>({date:d.submittedAt!,event:`${d.name} ${d.status==='Verified'?'verified':d.status==='Rejected'?'requires action':'submitted for review'}`,status:d.status==='Pending'?'pending':'done'}));
 
   const overallConfig = {
     verified: { label: 'Fully Verified', cls: 'bg-success/10 border-success/30 text-success', icon: <ShieldCheck size={20} className="text-success" /> },
@@ -131,10 +133,10 @@ export default function SellerVerificationSection() {
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Verified', value: mockDocs.filter((d) => d.status === 'Verified').length, color: 'text-success', bg: 'bg-success/10', icon: CheckCircle2 },
-          { label: 'Under Review', value: mockDocs.filter((d) => d.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning/10', icon: Clock },
-          { label: 'Action Required', value: mockDocs.filter((d) => d.status === 'Rejected').length, color: 'text-danger', bg: 'bg-danger/10', icon: XCircle },
-          { label: 'Not Submitted', value: mockDocs.filter((d) => d.status === 'Not Submitted').length, color: 'text-muted-foreground', bg: 'bg-muted', icon: AlertCircle },
+          { label: 'Verified', value: docs.filter((d) => d.status === 'Verified').length, color: 'text-success', bg: 'bg-success/10', icon: CheckCircle2 },
+          { label: 'Under Review', value: docs.filter((d) => d.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning/10', icon: Clock },
+          { label: 'Action Required', value: docs.filter((d) => d.status === 'Rejected').length, color: 'text-danger', bg: 'bg-danger/10', icon: XCircle },
+          { label: 'Not Submitted', value: docs.filter((d) => d.status === 'Not Submitted').length, color: 'text-muted-foreground', bg: 'bg-muted', icon: AlertCircle },
         ].map((stat) => {
           const StatIcon = stat.icon;
           return (
@@ -155,7 +157,7 @@ export default function SellerVerificationSection() {
       <div className="card p-6">
         <h3 className="text-base font-bold text-foreground mb-4">Compliance Document Checklist</h3>
         <div className="flex flex-col gap-3">
-          {mockDocs.map((doc) => {
+          {docs.map((doc) => {
             const cfg = statusConfig[doc.status];
             const isExpanded = expandedDoc === doc.id;
             return (
@@ -212,13 +214,13 @@ export default function SellerVerificationSection() {
                     )}
                     <div className="flex gap-2 mt-3">
                       {(doc.status === 'Rejected' || doc.status === 'Not Submitted' || doc.status === 'Expired') && (
-                        <button className="btn-primary py-1.5 px-3 text-xs gap-1">
+                        <button onClick={()=>upload(doc)} className="btn-primary py-1.5 px-3 text-xs gap-1">
                           <Upload size={12} />
                           {doc.status === 'Rejected' ? 'Re-upload' : 'Upload'}
                         </button>
                       )}
                       {doc.status === 'Verified' && (
-                        <button className="btn-ghost py-1.5 px-3 text-xs gap-1">
+                        <button onClick={()=>download(doc)} className="btn-ghost py-1.5 px-3 text-xs gap-1">
                           <Download size={12} />
                           Download
                         </button>

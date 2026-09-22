@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, CheckCircle2, Clock, AlertCircle, Download, Trash2, Plus, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { downloadSellerDocument, sellerApi, uploadSellerDocument, type SellerDocument } from '@/lib/seller-api';
 
 
 interface Document {
@@ -16,15 +17,6 @@ interface Document {
   fileSize: string;
   required: boolean;
 }
-
-const mockDocuments: Document[] = [
-  { id: 'doc1', name: 'FSSAI_License_2026.pdf', type: 'FSSAI License', status: 'Verified', uploadedAt: '2026-03-10', expiresAt: '2027-03-09', fileSize: '1.2 MB', required: true },
-  { id: 'doc2', name: 'GST_Certificate_27AABCS.pdf', type: 'GST Certificate', status: 'Verified', uploadedAt: '2026-03-10', fileSize: '0.8 MB', required: true },
-  { id: 'doc3', name: 'Address_Proof_Andheri.pdf', type: 'Address Proof', status: 'Verified', uploadedAt: '2026-03-12', fileSize: '2.1 MB', required: true },
-  { id: 'doc4', name: 'Bank_Details_HDFC.pdf', type: 'Bank Details', status: 'Verified', uploadedAt: '2026-03-12', fileSize: '0.5 MB', required: true },
-  { id: 'doc5', name: 'PAN_Card_AABCS1429B.pdf', type: 'PAN Card', status: 'Pending', uploadedAt: '2026-09-05', fileSize: '0.3 MB', required: true },
-  { id: 'doc6', name: 'Trade_License_Mumbai.pdf', type: 'Trade License', status: 'Rejected', uploadedAt: '2026-08-20', fileSize: '1.5 MB', required: false },
-];
 
 const statusConfig = {
   Verified: { className: 'badge-active', icon: CheckCircle2, color: 'text-success' },
@@ -43,23 +35,27 @@ const docTypeIcons: Record<Document['type'], string> = {
 };
 
 export default function DocumentsSection() {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const typeMap:Record<Document['type'],string>={'FSSAI License':'FSSAI','GST Certificate':'GST','Address Proof':'ADDRESS_PROOF','Bank Details':'BANK_PROOF','PAN Card':'PAN','Trade License':'TRADE_LICENSE'};
+  const labelMap:Record<string,Document['type']>={FSSAI:'FSSAI License',GST:'GST Certificate',ADDRESS_PROOF:'Address Proof',BANK_PROOF:'Bank Details',PAN:'PAN Card',TRADE_LICENSE:'Trade License'};
+  const mapDocument=(d:SellerDocument):Document=>({id:d.id,name:d.name,type:labelMap[d.type]||'Trade License',status:d.status==='VERIFIED'?'Verified':d.status==='REJECTED'?'Rejected':d.status==='EXPIRED'?'Expired':'Pending',uploadedAt:d.uploadedAt.slice(0,10),expiresAt:d.expiresAt||undefined,fileSize:d.sizeBytes>=1048576?`${(d.sizeBytes/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(d.sizeBytes/1024))} KB`,required:['FSSAI','GST','ADDRESS_PROOF','BANK_PROOF','PAN'].includes(d.type)});
+  const load=()=>sellerApi.documents().then(d=>setDocuments(d.map(mapDocument)));
+  useEffect(()=>{load().catch(e=>toast.error(e instanceof Error?e.message:'Unable to load documents'))},[]);
 
   const verified = documents.filter((d) => d.status === 'Verified').length;
   const pending = documents.filter((d) => d.status === 'Pending').length;
   const rejected = documents.filter((d) => d.status === 'Rejected').length;
 
   const handleUpload = (type: Document['type']) => {
-    toast.success(`${type} upload initiated. Select a PDF file to continue.`);
+    const input=document.createElement('input');input.type='file';input.accept='.pdf,.png,.jpg,.jpeg';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{await uploadSellerDocument(typeMap[type],file);await load();toast.success(`${type} uploaded`)}catch(e){toast.error(e instanceof Error?e.message:'Upload failed')}};input.click();
   };
 
-  const handleDownload = (doc: Document) => {
-    toast.success(`Downloading ${doc.name}...`);
+  const handleDownload = async (doc: Document) => {
+    try{await downloadSellerDocument(doc.id,doc.name)}catch(e){toast.error(e instanceof Error?e.message:'Download failed')}
   };
 
-  const handleDelete = (id: string) => {
-    setDocuments((prev) => prev.filter((d) => d.id !== id));
-    toast.success('Document removed');
+  const handleDelete = async (id: string) => {
+    try{await sellerApi.deleteDocument(id);setDocuments((prev) => prev.filter((d) => d.id !== id));toast.success('Document removed')}catch(e){toast.error(e instanceof Error?e.message:'Unable to remove document')}
   };
 
   return (

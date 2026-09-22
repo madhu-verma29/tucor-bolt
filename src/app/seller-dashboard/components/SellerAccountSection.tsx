@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Building2, ShieldCheck, Phone, Settings, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, EyeOff, Upload, ChevronRight, MapPin, Mail, Hash, Landmark, Lock, Trash2, RefreshCw, Info,  } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
+import { toast } from 'sonner';
+import { downloadSellerDocument, sellerApi, uploadSellerDocument, type SellerDocument } from '@/lib/seller-api';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,22 +64,12 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
 function CompanyDetailsTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    businessName: 'Spice Route Kitchens Pvt. Ltd.',
-    tradeName: 'Spice Route Kitchens',
-    businessType: 'Private Limited Company',
-    category: 'Restaurant / Cloud Kitchen',
-    pan: 'AABCS1429B',
-    cin: 'U55101MH2019PTC321456',
-    yearEstablished: '2019',
-    website: 'www.spiceroutekitchens.in',
-    address: '14B, Andheri Industrial Estate, Andheri West',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    pincode: '400053',
-    country: 'India',
+    businessName: '', tradeName: '', businessType: '', category: '', pan: '', cin: '', yearEstablished: '', website: '', address: '', city: '', state: '', pincode: '', country: 'India',
   });
 
   const handleChange = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+  useEffect(()=>{sellerApi.profile().then(p=>setForm({businessName:p.businessName,tradeName:p.tradeName,businessType:p.businessType,category:p.category,pan:p.pan,cin:p.cin,yearEstablished:p.yearEstablished,website:p.website,address:p.addressLine1,city:p.city,state:p.state,pincode:p.pincode,country:p.country})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load company details'))},[]);
+  const save=async()=>{try{await sellerApi.updateProfile({businessName:form.businessName,tradeName:form.tradeName,businessType:form.businessType,category:form.category,pan:form.pan,cin:form.cin,yearEstablished:form.yearEstablished,website:form.website,addressLine1:form.address,city:form.city,state:form.state,pincode:form.pincode,country:form.country});setEditing(false);toast.success('Company details saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save company details')}};
 
   return (
     <div>
@@ -88,7 +80,7 @@ function CompanyDetailsTab() {
           editing ? (
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><X size={13} />Cancel</button>
-              <button onClick={() => setEditing(false)} className="btn-primary text-xs px-3 py-1.5 gap-1.5"><Save size={13} />Save</button>
+              <button onClick={save} className="btn-primary text-xs px-3 py-1.5 gap-1.5"><Save size={13} />Save</button>
             </div>
           ) : (
             <button onClick={() => setEditing(true)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><Edit3 size={13} />Edit</button>
@@ -186,9 +178,11 @@ interface DocRowProps {
   expiry?: string;
   submittedOn?: string;
   note?: string;
+  onUpload?: () => void;
+  onView?: () => void;
 }
 
-function DocRow({ icon, title, number, status, expiry, submittedOn, note }: DocRowProps) {
+function DocRow({ icon, title, number, status, expiry, submittedOn, note, onUpload, onView }: DocRowProps) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="border border-border rounded-xl overflow-hidden mb-3">
@@ -220,8 +214,8 @@ function DocRow({ icon, title, number, status, expiry, submittedOn, note }: DocR
             </div>
           )}
           <div className="flex gap-2 mt-4">
-            <button className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><Upload size={13} />Re-upload Document</button>
-            <button className="btn-ghost text-xs px-3 py-1.5 gap-1.5"><Eye size={13} />View Document</button>
+            <button onClick={onUpload} className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><Upload size={13} />Re-upload Document</button>
+            <button onClick={onView} className="btn-ghost text-xs px-3 py-1.5 gap-1.5"><Eye size={13} />View Document</button>
           </div>
         </div>
       )}
@@ -230,6 +224,12 @@ function DocRow({ icon, title, number, status, expiry, submittedOn, note }: DocR
 }
 
 function GSTFSSAITab() {
+  const [documents,setDocuments]=useState<SellerDocument[]>([]);const [profile,setProfile]=useState<any>(null);const [bankLinked,setBankLinked]=useState(false);
+  const load=()=>Promise.all([sellerApi.documents(),sellerApi.profile(),sellerApi.bankAccount()]).then(([d,p,b])=>{setDocuments(d);setProfile(p);setBankLinked(!!b.accountNumber)});useEffect(()=>{load().catch(()=>{})},[]);
+  const documentFor=(type:string)=>documents.find(d=>d.type===type);const status=(type:string):VerificationStatus=>{const d=documentFor(type);return !d?'not_submitted':d.status==='VERIFIED'?'verified':d.status==='REJECTED'?'rejected':'under_review'};
+  const upload=(type:string)=>{const input=document.createElement('input');input.type='file';input.accept='.pdf,.png,.jpg,.jpeg';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{await uploadSellerDocument(type,file);await load();toast.success('Document uploaded')}catch(e){toast.error(e instanceof Error?e.message:'Upload failed')}};input.click()};
+  const view=async(type:string)=>{const d=documentFor(type);if(!d)return;try{await downloadSellerDocument(d.id,d.name)}catch(e){toast.error(e instanceof Error?e.message:'Download failed')}};
+  const checks=[status('GST')==='verified',status('FSSAI')==='verified',bankLinked,status('ADDRESS_PROOF')==='verified',status('DIRECTOR_KYC')==='verified'];const complete=checks.filter(Boolean).length;
   return (
     <div>
       {/* Trust Score */}
@@ -238,18 +238,18 @@ function GSTFSSAITab() {
           <div>
             <div className="section-label mb-1">TUCOR Trust Score</div>
             <div className="flex items-end gap-2">
-              <span className="text-4xl font-bold text-primary font-mono-data">87</span>
+              <span className="text-4xl font-bold text-primary font-mono-data">{Math.round(complete/checks.length*100)}</span>
               <span className="text-muted-foreground text-sm mb-1">/ 100</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">Based on verification completeness, transaction history, and compliance</p>
           </div>
           <div className="flex flex-col gap-2 min-w-[180px]">
             {[
-              { label: 'GST Verified', done: true },
-              { label: 'FSSAI Licensed', done: true },
-              { label: 'Bank Account Linked', done: true },
-              { label: 'Address Proof', done: false },
-              { label: 'Director KYC', done: false },
+              { label: 'GST Verified', done: checks[0] },
+              { label: 'FSSAI Licensed', done: checks[1] },
+              { label: 'Bank Account Linked', done: checks[2] },
+              { label: 'Address Proof', done: checks[3] },
+              { label: 'Director KYC', done: checks[4] },
             ].map(({ label, done }) => (
               <div key={label} className="flex items-center gap-2 text-xs">
                 {done
@@ -263,10 +263,10 @@ function GSTFSSAITab() {
         {/* Progress bar */}
         <div className="mt-4">
           <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-            <span>Verification Progress</span><span>3 of 5 complete</span>
+            <span>Verification Progress</span><span>{complete} of 5 complete</span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: '60%' }} />
+            <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: `${complete/checks.length*100}%` }} />
           </div>
         </div>
       </div>
@@ -275,45 +275,46 @@ function GSTFSSAITab() {
         <DocRow
           icon={<Hash size={16} className="text-primary" />}
           title="GST Registration"
-          number="27AABCS1429B1ZV"
-          status="verified"
-          submittedOn="12 Mar 2026"
+          number={profile?.gstNumber||'—'}
+          status={status('GST')}
+          submittedOn={documentFor('GST')?.uploadedAt?.slice(0,10)}
           expiry="Lifetime (Annual Filing)"
+          onUpload={()=>upload('GST')} onView={()=>view('GST')}
         />
         <DocRow
           icon={<ShieldCheck size={16} className="text-primary" />}
           title="FSSAI License"
-          number="11224999000123"
-          status="verified"
-          submittedOn="05 Jan 2026"
-          expiry="31 Dec 2026"
+          number={profile?.fssaiNumber||'—'}
+          status={status('FSSAI')}
+          submittedOn={documentFor('FSSAI')?.uploadedAt?.slice(0,10)}
+          expiry={documentFor('FSSAI')?.expiresAt}
+          onUpload={()=>upload('FSSAI')} onView={()=>view('FSSAI')}
         />
         <DocRow
           icon={<Building2 size={16} className="text-primary" />}
           title="Address Proof (Utility Bill)"
           number="—"
-          status="not_submitted"
+          status={status('ADDRESS_PROOF')}
+          submittedOn={documentFor('ADDRESS_PROOF')?.uploadedAt?.slice(0,10)}
+          onUpload={()=>upload('ADDRESS_PROOF')} onView={()=>view('ADDRESS_PROOF')}
           note="Please upload a recent electricity or water bill (not older than 3 months) to complete your verification."
         />
         <DocRow
           icon={<Building2 size={16} className="text-primary" />}
           title="Director / Proprietor KYC"
           number="—"
-          status="pending"
-          submittedOn="02 Sep 2026"
+          status={status('DIRECTOR_KYC')}
+          submittedOn={documentFor('DIRECTOR_KYC')?.uploadedAt?.slice(0,10)}
+          onUpload={()=>upload('DIRECTOR_KYC')} onView={()=>view('DIRECTOR_KYC')}
           note="Your KYC documents are under review by the TUCOR compliance team. Expected completion: 2–3 business days."
         />
       </SectionCard>
 
       <SectionCard title="Verification Timeline" subtitle="History of your compliance submissions">
         <div className="space-y-3">
-          {[
-            { date: '12 Mar 2026', event: 'GST Certificate verified by TUCOR compliance team', status: 'verified' as VerificationStatus },
-            { date: '05 Jan 2026', event: 'FSSAI License approved and linked to seller account', status: 'verified' as VerificationStatus },
-            { date: '02 Sep 2026', event: 'Director KYC submitted — under review', status: 'under_review' as VerificationStatus },
-          ].map(({ date, event, status }) => (
-            <div key={date} className="flex items-start gap-3">
-              <VerificationBadge status={status} />
+          {documents.map(d => ({ date:d.uploadedAt.slice(0,10), event:`${d.type.replaceAll('_',' ')} — ${d.status.replaceAll('_',' ')}`, docStatus:status(d.type) })).map(({ date, event, docStatus }) => (
+            <div key={`${date}-${event}`} className="flex items-start gap-3">
+              <VerificationBadge status={docStatus} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-foreground">{event}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">{date}</div>
@@ -332,15 +333,12 @@ function BankAccountTab() {
   const [editing, setEditing] = useState(false);
   const [showFull, setShowFull] = useState(false);
   const [form, setForm] = useState({
-    accountHolder: 'Spice Route Kitchens Pvt. Ltd.',
-    accountNumber: '9876543210001234',
-    ifsc: 'HDFC0001234',
-    bankName: 'HDFC Bank',
-    branch: 'Andheri West, Mumbai',
-    accountType: 'Current Account',
+    accountHolder: '', accountNumber: '', ifsc: '', bankName: '', branch: '', accountType: '',
   });
   const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const masked = '•••• •••• •••• ' + form.accountNumber.slice(-4);
+  useEffect(()=>{sellerApi.bankAccount().then(b=>setForm({accountHolder:b.accountHolder,accountNumber:b.accountNumber,ifsc:b.ifsc,bankName:b.bankName,branch:b.branch,accountType:b.accountType})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank account'))},[]);
+  const save=async()=>{try{await sellerApi.updateBankAccount({accountHolder:form.accountHolder,accountNumber:form.accountNumber,ifsc:form.ifsc,bankName:form.bankName,branch:form.branch,accountType:form.accountType,upiId:''});setEditing(false);toast.success('Bank account saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save bank account')}};
 
   return (
     <div>
@@ -351,7 +349,7 @@ function BankAccountTab() {
           editing ? (
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><X size={13} />Cancel</button>
-              <button onClick={() => setEditing(false)} className="btn-primary text-xs px-3 py-1.5 gap-1.5"><Save size={13} />Save</button>
+              <button onClick={save} className="btn-primary text-xs px-3 py-1.5 gap-1.5"><Save size={13} />Save</button>
             </div>
           ) : (
             <button onClick={() => setEditing(true)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><Edit3 size={13} />Edit</button>
@@ -449,17 +447,11 @@ function BankAccountTab() {
 function ContactInfoTab() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    primaryName: 'Priya Nambiar',
-    primaryRole: 'Operations Manager',
-    primaryPhone: '+91 98765 43210',
-    primaryEmail: 'priya@spiceroute.in',
-    altPhone: '+91 91234 56789',
-    altEmail: 'accounts@spiceroute.in',
-    pickupContact: 'Ravi Kumar',
-    pickupPhone: '+91 87654 32109',
-    pickupAvailability: 'Mon–Sat, 8 AM – 6 PM',
+    primaryName: '', primaryRole: '', primaryPhone: '', primaryEmail: '', altPhone: '', altEmail: '', pickupContact: '', pickupPhone: '', pickupAvailability: '',
   });
   const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(()=>{sellerApi.profile().then(p=>setForm({primaryName:p.primaryContact,primaryRole:p.designation,primaryPhone:p.phone,primaryEmail:p.contactEmail,altPhone:p.altPhone,altEmail:p.altEmail,pickupContact:p.pickupContact,pickupPhone:p.pickupPhone,pickupAvailability:p.pickupAvailability})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load contact details'))},[]);
+  const save=async()=>{try{await sellerApi.updateProfile({primaryContact:form.primaryName,designation:form.primaryRole,phone:form.primaryPhone,contactEmail:form.primaryEmail,altPhone:form.altPhone,altEmail:form.altEmail,pickupContact:form.pickupContact,pickupPhone:form.pickupPhone,pickupAvailability:form.pickupAvailability});setEditing(false);toast.success('Contact information saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save contact information')}};
 
   return (
     <div>
@@ -470,7 +462,7 @@ function ContactInfoTab() {
           editing ? (
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><X size={13} />Cancel</button>
-              <button onClick={() => setEditing(false)} className="btn-primary text-xs px-3 py-1.5 gap-1.5"><Save size={13} />Save</button>
+              <button onClick={save} className="btn-primary text-xs px-3 py-1.5 gap-1.5"><Save size={13} />Save</button>
             </div>
           ) : (
             <button onClick={() => setEditing(true)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5"><Edit3 size={13} />Edit</button>
@@ -590,6 +582,9 @@ function SettingsTab() {
   const [loginAlerts, setLoginAlerts] = useState(true);
   const [autoInvoice, setAutoInvoice] = useState(true);
   const [weeklyReport, setWeeklyReport] = useState(false);
+  useEffect(()=>{sellerApi.preferences().then(p=>{setTwoFA(p.twoFactor);setLoginAlerts(p.loginAlerts);setAutoInvoice(p.autoInvoice);setWeeklyReport(p.weeklyReport)}).catch(()=>{})},[]);
+  const savePreferences=(next:{twoFactor:boolean;loginAlerts:boolean;autoInvoice:boolean;weeklyReport:boolean})=>sellerApi.updatePreferences(next).catch(e=>toast.error(e instanceof Error?e.message:'Unable to save preference'));
+  const changePassword=async()=>{if(newPw.length<8||newPw!==confirmPw){toast.error(newPw!==confirmPw?'Passwords do not match':'New password must be at least 8 characters');return}try{await sellerApi.changePassword({currentPassword:currentPw,newPassword:newPw});setCurrentPw('');setNewPw('');setConfirmPw('');toast.success('Password updated successfully')}catch(e){toast.error(e instanceof Error?e.message:'Unable to update password')}};
 
   return (
     <div>
@@ -615,7 +610,7 @@ function SettingsTab() {
             <input type={showPw ? 'text' : 'password'} className="input-field" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="Re-enter new password" />
           </div>
         </div>
-        <button className="btn-primary text-sm gap-1.5"><Lock size={14} />Update Password</button>
+        <button onClick={changePassword} className="btn-primary text-sm gap-1.5"><Lock size={14} />Update Password</button>
       </SectionCard>
 
       {/* Account Security Toggles */}
@@ -631,7 +626,7 @@ function SettingsTab() {
                 <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
               </div>
               <button
-                onClick={() => set((v: boolean) => !v)}
+                onClick={() => {const next=!val;set(next);savePreferences({twoFactor:label.startsWith('Two-Factor')?next:twoFA,loginAlerts:label==='Login Alerts'?next:loginAlerts,autoInvoice,weeklyReport})}}
                 className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${val ? 'bg-primary' : 'bg-muted'}`}
               >
                 <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${val ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -654,7 +649,7 @@ function SettingsTab() {
                 <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
               </div>
               <button
-                onClick={() => set((v: boolean) => !v)}
+                onClick={() => {const next=!val;set(next);savePreferences({twoFactor:twoFA,loginAlerts,autoInvoice:label==='Auto-generate Invoices'?next:autoInvoice,weeklyReport:label==='Weekly Summary Report'?next:weeklyReport})}}
                 className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${val ? 'bg-primary' : 'bg-muted'}`}
               >
                 <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${val ? 'translate-x-6' : 'translate-x-1'}`} />

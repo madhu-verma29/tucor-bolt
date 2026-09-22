@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import {
@@ -25,6 +25,7 @@ import {
   Banknote,
 } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
+import { sellerApi, type SellerProfile } from '@/lib/seller-api';
 
 
 interface NavItem {
@@ -79,6 +80,7 @@ export default function DashboardSidebar({
   onNavigate,
 }: Props) {
   const groups = [...new Set(navItems.map((n) => n.group))];
+  const [profile,setProfile]=useState<SellerProfile|null>(null);useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{})},[]);
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -95,11 +97,11 @@ export default function DashboardSidebar({
         <div className="px-4 py-3 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full gradient-card-green flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-              P
+              {(profile?.primaryContact||'S').charAt(0)}
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-foreground truncate">Priya Nambiar</div>
-              <div className="text-xs text-muted-foreground truncate">Spice Route Kitchens</div>
+              <div className="text-xs font-bold text-foreground truncate">{profile?.primaryContact||'Seller'}</div>
+              <div className="text-xs text-muted-foreground truncate">{profile?.tradeName||profile?.businessName||''}</div>
             </div>
             <span className="badge-active text-xs flex-shrink-0">Verified</span>
           </div>

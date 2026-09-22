@@ -5,6 +5,7 @@ import { Menu, PanelLeftClose, Bell, Search, Plus, ChevronDown, LogOut, User, Se
 import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
+import { sellerApi, type SellerProfile } from '@/lib/seller-api';
 
 
 interface Props {
@@ -26,6 +27,8 @@ export default function DashboardTopbar({ onToggleSidebar, onMobileMenuOpen, sid
   const [profileOpen, setProfileOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [profile,setProfile]=useState<SellerProfile|null>(null);
+  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{})},[]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -135,17 +138,17 @@ export default function DashboardTopbar({ onToggleSidebar, onMobileMenuOpen, sid
             className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-xl hover:bg-muted transition-all duration-150"
           >
             <div className="w-7 h-7 rounded-full gradient-card-green flex items-center justify-center text-white font-bold text-xs">
-              P
+              {(profile?.primaryContact||'S').charAt(0)}
             </div>
-            <span className="hidden sm:block text-sm font-medium text-foreground">Priya</span>
+            <span className="hidden sm:block text-sm font-medium text-foreground">{profile?.primaryContact?.split(' ')[0]||'Seller'}</span>
             <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-150 ${profileOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {profileOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-52 bg-card border border-border rounded-xl shadow-card-lg z-50 overflow-hidden animate-fade-in-up">
               <div className="px-4 py-3 border-b border-border">
-                <div className="font-semibold text-foreground text-sm">Priya Nambiar</div>
-                <div className="text-xs text-muted-foreground">priya@spiceroute.in</div>
+                <div className="font-semibold text-foreground text-sm">{profile?.primaryContact||'Seller'}</div>
+                <div className="text-xs text-muted-foreground">{profile?.contactEmail||profile?.email||''}</div>
               </div>
               {[
                 { icon: User, label: 'Business Profile' },

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Settings, Bell, Shield, CreditCard, User, Eye, EyeOff, Save, Smartphone, Mail, CheckCircle2, Undo2, X, AlertCircle } from 'lucide-react';
-import { sellerProfile } from '@/lib/mock-data';
+import { sellerApi, type SellerBankAccount } from '@/lib/seller-api';
 import Icon from '@/components/ui/AppIcon';
 
 
@@ -60,9 +60,9 @@ export default function SettingsSection() {
   const toastTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const initialAccountForm = {
-    ownerName: sellerProfile.ownerName,
-    email: sellerProfile.email,
-    phone: sellerProfile.phone,
+    ownerName: '',
+    email: '',
+    phone: '',
   };
   const [accountForm, setAccountForm] = useState(initialAccountForm);
   const [savedAccountForm, setSavedAccountForm] = useState(initialAccountForm);
@@ -81,6 +81,9 @@ export default function SettingsSection() {
 
   const [passwordFields, setPasswordFields] = useState({ current: '', newPwd: '', confirm: '' });
   const [passwordError, setPasswordError] = useState('');
+  const [gstNumber,setGstNumber]=useState('');
+  const [bank,setBank]=useState<SellerBankAccount|null>(null);
+  useEffect(()=>{Promise.all([sellerApi.settingsAccount(),sellerApi.notificationSettings(),sellerApi.bankAccount()]).then(([a,n,b])=>{const account={ownerName:a.fullName||'',email:a.email||'',phone:a.phone||''};setAccountForm(account);setSavedAccountForm(account);setGstNumber(a.gstNumber||'');setNotifSettings(n);setSavedNotifSettings(n);setBank(b)}).catch(()=>{})},[]);
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'account', label: 'Account', icon: User },
@@ -104,17 +107,19 @@ export default function SettingsSection() {
     setSaveState((prev) => ({ ...prev, [key]: state }));
   };
 
-  const handleAccountSave = () => {
+  const handleAccountSave = async () => {
     setSectionSaveState('account', { status: 'saving' });
     const prevForm = { ...savedAccountForm };
-    setTimeout(() => {
+    try {
+      await sellerApi.updateSettingsAccount({fullName:accountForm.ownerName,email:accountForm.email,phone:accountForm.phone});
       setSavedAccountForm({ ...accountForm });
       setAccountDirty(false);
       setSectionSaveState('account', { status: 'saved' });
       addToast({
         type: 'success',
         message: 'Account information saved.',
-        undoAction: () => {
+        undoAction: async () => {
+          await sellerApi.updateSettingsAccount({fullName:prevForm.ownerName,email:prevForm.email,phone:prevForm.phone});
           setAccountForm(prevForm);
           setSavedAccountForm(prevForm);
           setAccountDirty(false);
@@ -123,7 +128,7 @@ export default function SettingsSection() {
         },
       });
       setTimeout(() => setSectionSaveState('account', { status: 'idle' }), 3000);
-    }, 600);
+    } catch(e) {setSectionSaveState('account',{status:'error'});addToast({type:'error',message:e instanceof Error?e.message:'Unable to save account information'})}
   };
 
   const handleAccountCancel = () => {
@@ -132,16 +137,18 @@ export default function SettingsSection() {
     addToast({ type: 'info', message: 'Changes discarded.' });
   };
 
-  const handleNotifSave = () => {
+  const handleNotifSave = async () => {
     setSectionSaveState('notif', { status: 'saving' });
     const prevNotif = { ...savedNotifSettings };
-    setTimeout(() => {
+    try {
+      await sellerApi.updateNotificationSettings(notifSettings);
       setSavedNotifSettings({ ...notifSettings });
       setSectionSaveState('notif', { status: 'saved' });
       addToast({
         type: 'success',
         message: 'Notification preferences saved.',
-        undoAction: () => {
+        undoAction: async () => {
+          await sellerApi.updateNotificationSettings(prevNotif);
           setNotifSettings(prevNotif);
           setSavedNotifSettings(prevNotif);
           setSectionSaveState('notif', { status: 'idle' });
@@ -149,21 +156,22 @@ export default function SettingsSection() {
         },
       });
       setTimeout(() => setSectionSaveState('notif', { status: 'idle' }), 3000);
-    }, 600);
+    } catch(e) {setSectionSaveState('notif',{status:'error'});addToast({type:'error',message:e instanceof Error?e.message:'Unable to save notification preferences'})}
   };
 
-  const handlePasswordUpdate = () => {
+  const handlePasswordUpdate = async () => {
     setPasswordError('');
     if (!passwordFields.current) { setPasswordError('Current password is required.'); return; }
     if (passwordFields.newPwd.length < 8) { setPasswordError('New password must be at least 8 characters.'); return; }
     if (passwordFields.newPwd !== passwordFields.confirm) { setPasswordError('Passwords do not match.'); return; }
     setSectionSaveState('password', { status: 'saving' });
-    setTimeout(() => {
+    try {
+      await sellerApi.changePassword({currentPassword:passwordFields.current,newPassword:passwordFields.newPwd});
       setPasswordFields({ current: '', newPwd: '', confirm: '' });
       setSectionSaveState('password', { status: 'saved' });
       addToast({ type: 'success', message: 'Password updated successfully.' });
       setTimeout(() => setSectionSaveState('password', { status: 'idle' }), 3000);
-    }, 700);
+    } catch(e) {setSectionSaveState('password',{status:'error'});setPasswordError(e instanceof Error?e.message:'Unable to update password')}
   };
 
   const SaveButton = ({ sectionKey, label, onClick, icon: Icon }: { sectionKey: string; label: string; onClick: () => void; icon: React.ElementType }) => {
@@ -255,7 +263,7 @@ export default function SettingsSection() {
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">GST Number</label>
               <input
                 type="text"
-                value={sellerProfile.gstNumber}
+                value={gstNumber}
                 disabled
                 className="w-full px-3.5 py-2.5 text-sm bg-muted/50 border border-border rounded-xl text-muted-foreground cursor-not-allowed"
               />
@@ -424,12 +432,12 @@ export default function SettingsSection() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { label: 'Account Holder Name', value: 'Spice Route Cloud Kitchens Pvt. Ltd.' },
-              { label: 'Bank Name', value: 'HDFC Bank' },
-              { label: 'Account Number', value: '••••••••4821' },
-              { label: 'IFSC Code', value: 'HDFC0001234' },
-              { label: 'Account Type', value: 'Current Account' },
-              { label: 'Branch', value: 'Andheri West, Mumbai' },
+              { label: 'Account Holder Name', value: bank?.accountHolder||'' },
+              { label: 'Bank Name', value: bank?.bankName||'' },
+              { label: 'Account Number', value: bank?.accountNumber?`••••••••${bank.accountNumber.slice(-4)}`:'' },
+              { label: 'IFSC Code', value: bank?.ifsc||'' },
+              { label: 'Account Type', value: bank?.accountType||'' },
+              { label: 'Branch', value: bank?.branch||'' },
             ].map((field) => (
               <div key={`bank-field-${field.label}`}>
                 <label className="block text-xs font-semibold text-muted-foreground mb-1.5">{field.label}</label>
