@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Leaf, Droplets, TrendingUp, Award } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import Icon from '@/components/ui/AppIcon';
+import { buyerApi, type BuyerOrder } from '@/lib/buyer-api';
 
 
 const monthlyImpact = [
