@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CreditCard, Download, CheckCircle2, Clock, AlertCircle, TrendingUp } from 'lucide-react';
-import { mockPayments, Payment } from '@/lib/mock-data';
+import { sellerApi, type SellerPayment as Payment } from '@/lib/seller-api';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { downloadCsv } from '@/lib/download-csv';
 
-
-// BACKEND INTEGRATION: GET /api/seller/payments
 
 function getPaymentStatusConfig(status: Payment['status']) {
   const map = {
@@ -21,8 +20,10 @@ function getPaymentStatusConfig(status: Payment['status']) {
 }
 
 export default function PaymentsSection() {
-  const totalEarned = mockPayments.filter((p) => p.status === 'Settled').reduce((s, p) => s + p.amount, 0);
-  const totalPending = mockPayments.filter((p) => ['Pending', 'Processing'].includes(p.status)).reduce((s, p) => s + p.amount, 0);
+  const [paymentItems,setPaymentItems]=useState<Payment[]>([]);
+  useEffect(()=>{sellerApi.payments().then(setPaymentItems).catch(()=>setPaymentItems([]))},[]);
+  const totalEarned = paymentItems.filter((p) => p.status === 'Settled').reduce((s, p) => s + p.amount, 0);
+  const totalPending = paymentItems.filter((p) => ['Pending', 'Processing'].includes(p.status)).reduce((s, p) => s + p.amount, 0);
 
   return (
     <div className="flex flex-col gap-5">
@@ -35,8 +36,8 @@ export default function PaymentsSection() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Earned (Lifetime)', value: `₹${(278400).toLocaleString('en-IN')}`, sub: '67 collections', color: 'text-success', bg: 'bg-success-bg', icon: TrendingUp },
-          { label: 'Settled This Month', value: `₹${totalEarned.toLocaleString('en-IN')}`, sub: `${mockPayments.filter((p) => p.status === 'Settled').length} payments`, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
-          { label: 'Awaiting Settlement', value: `₹${totalPending.toLocaleString('en-IN')}`, sub: `${mockPayments.filter((p) => ['Pending', 'Processing'].includes(p.status)).length} pending`, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
+          { label: 'Settled This Month', value: `₹${totalEarned.toLocaleString('en-IN')}`, sub: `${paymentItems.filter((p) => p.status === 'Settled').length} payments`, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
+          { label: 'Awaiting Settlement', value: `₹${totalPending.toLocaleString('en-IN')}`, sub: `${paymentItems.filter((p) => ['Pending', 'Processing'].includes(p.status)).length} pending`, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
           { label: 'Avg. Per Collection', value: '₹4,155', sub: 'Based on last 12 months', color: 'text-info', bg: 'bg-info-bg', icon: CreditCard },
         ].map((stat) => {
           const Icon = stat.icon;
@@ -58,7 +59,7 @@ export default function PaymentsSection() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="font-bold text-foreground text-base">Payment History</h3>
           <button
-            onClick={() => toast.success('Payment report exported')}
+            onClick={() => {downloadCsv('seller-payments.csv',[['Payment','Order','Amount','Status','Due Date','Settled Date','Reference'],...paymentItems.map(p=>[p.id,p.orderId,p.amount,p.status,p.dueDate,p.settledDate,p.reference])]);toast.success('Payment report exported')}}
             className="btn-secondary py-2 text-xs gap-1.5"
           >
             <Download size={13} />
@@ -77,7 +78,7 @@ export default function PaymentsSection() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {mockPayments.map((payment) => {
+              {paymentItems.map((payment) => {
                 const config = getPaymentStatusConfig(payment.status);
                 const StatusIcon = config.icon;
                 return (

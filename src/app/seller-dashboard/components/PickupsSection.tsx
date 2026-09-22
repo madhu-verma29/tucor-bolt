@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Truck, Calendar, User, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { mockPickups, Pickup } from '@/lib/mock-data';
+import { sellerApi, type SellerPickup as Pickup } from '@/lib/seller-api';
 
-
-// BACKEND INTEGRATION: GET /api/seller/pickups
 
 const PICKUP_STEPS: Pickup['status'][] = ['Pending', 'Scheduled', 'Assigned', 'In Transit', 'Picked Up', 'Completed'];
 
@@ -53,25 +51,28 @@ function getPickupStatusBadge(status: Pickup['status']) {
 }
 
 export default function PickupsSection() {
+  const [pickupItems,setPickupItems]=useState<Pickup[]>([]);
   const [activePickupId, setActivePickupId] = useState<string | null>(null);
+  useEffect(()=>{sellerApi.pickups().then(setPickupItems).catch(()=>setPickupItems([]))},[]);
+  const nextScheduled=pickupItems.find(p=>p.status==='Scheduled');
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-2xl font-bold text-foreground">Pickups</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {mockPickups.length} total · {mockPickups.filter((p) => p.status !== 'Completed').length} upcoming
+          {pickupItems.length} total · {pickupItems.filter((p) => p.status !== 'Completed').length} upcoming
         </p>
       </div>
 
       {/* Upcoming alert */}
-      {mockPickups.some((p) => p.status === 'Scheduled') && (
+      {pickupItems.some((p) => p.status === 'Scheduled') && (
         <div className="flex items-start gap-3 p-4 rounded-xl bg-warning-bg border border-warning/30">
           <AlertTriangle size={18} className="text-warning flex-shrink-0 mt-0.5" />
           <div>
             <div className="text-sm font-semibold text-warning mb-0.5">Pickup reminder</div>
             <p className="text-xs text-warning/80">
-              PKP-2026-0094 is scheduled for Sep 12. Ensure your UCO drums are accessible and labeled. Agent Rajan Mehta will arrive between 9–11 AM.
+              {nextScheduled?.id} is scheduled for {nextScheduled?.scheduledDate}. Ensure your UCO drums are accessible and labeled. Agent {nextScheduled?.agentName} will arrive as scheduled.
             </p>
           </div>
         </div>
@@ -79,7 +80,7 @@ export default function PickupsSection() {
 
       {/* Pickup cards */}
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {mockPickups.map((pickup) => (
+        {pickupItems.map((pickup) => (
           <div
             key={`pickup-card-${pickup.id}`}
             className={`card overflow-hidden transition-all duration-200 hover:shadow-card-hover cursor-pointer ${

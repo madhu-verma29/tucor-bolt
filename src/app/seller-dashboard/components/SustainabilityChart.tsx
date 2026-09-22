@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ComposedChart,
   Bar,
@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { mockSustainabilityTimeline } from '@/lib/mock-data';
+import { sellerApi, type SellerTimeline } from '@/lib/seller-api';
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -42,14 +42,15 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export default function SustainabilityChart() {
+  const [timeline,setTimeline]=useState<SellerTimeline[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setTimeline(x.timeline)).catch(()=>setTimeline([]))},[]);
   return (
     <div className="card p-5">
       <div className="mb-5">
         <h3 className="font-bold text-foreground text-base">Monthly Impact Breakdown</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">UCO collected (bars) vs CO₂ offset trend (line) — Oct 2025 to Sep 2026</p>
+        <p className="text-xs text-muted-foreground mt-0.5">UCO collected (bars) vs CO₂ offset trend (line) — rolling 12 months</p>
       </div>
       <ResponsiveContainer width="100%" height={260}>
-        <ComposedChart data={mockSustainabilityTimeline} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <ComposedChart data={timeline} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
           <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={40} />

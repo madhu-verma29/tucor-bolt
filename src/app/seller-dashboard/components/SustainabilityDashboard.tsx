@@ -1,17 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Leaf, Wind, Recycle, Award, Info } from 'lucide-react';
-import { sellerProfile, mockSustainabilityTimeline } from '@/lib/mock-data';
+import { sellerApi, type SellerDashboard } from '@/lib/seller-api';
 import SustainabilityChart from './SustainabilityChart';
 import Icon from '@/components/ui/AppIcon';
 
 
-// BACKEND INTEGRATION: GET /api/seller/sustainability
-
 export default function SustainabilityDashboard() {
-  const totalCO2 = mockSustainabilityTimeline?.reduce((s, m) => s + m?.co2OffsetKg, 0);
-  const totalCollections = mockSustainabilityTimeline?.reduce((s, m) => s + m?.collectionsCount, 0);
+  const [metrics,setMetrics]=useState<SellerDashboard|null>(null);useEffect(()=>{sellerApi.dashboard().then(setMetrics).catch(()=>{})},[]);
+  const totalCO2 = metrics?.co2OffsetKg||0;
+  const totalCollections = metrics?.collectionsCompleted||0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -41,7 +40,7 @@ export default function SustainabilityDashboard() {
             id: 'si-uco',
             icon: Recycle,
             label: 'UCO Recovered',
-            value: `${(sellerProfile?.totalUCOCollected / 1000)?.toFixed(1)}K L`,
+            value: `${((metrics?.totalUcoCollected||0) / 1000).toFixed(1)}K L`,
             sub: 'Actual platform data',
             actual: true,
             color: 'text-primary',
@@ -51,7 +50,7 @@ export default function SustainabilityDashboard() {
             id: 'si-co2',
             icon: Wind,
             label: 'CO₂ Offset',
-            value: `${(sellerProfile?.co2OffsetKg / 1000)?.toFixed(1)}T kg`,
+            value: `${((metrics?.co2OffsetKg||0) / 1000).toFixed(1)}T kg`,
             sub: 'Estimated · IPCC basis',
             actual: false,
             color: 'text-accent',
@@ -61,7 +60,7 @@ export default function SustainabilityDashboard() {
             id: 'si-collections',
             icon: Leaf,
             label: 'Collections',
-            value: `${sellerProfile?.collectionsCompleted}`,
+            value: `${metrics?.collectionsCompleted||0}`,
             sub: 'Completed pickups',
             actual: true,
             color: 'text-success',
@@ -71,7 +70,7 @@ export default function SustainabilityDashboard() {
             id: 'si-biodiesel',
             icon: Award,
             label: 'Biodiesel Equivalent',
-            value: `${(sellerProfile?.totalUCOCollected * 0.88 / 1000)?.toFixed(1)}K L`,
+            value: `${((metrics?.totalUcoCollected||0) * 0.88 / 1000).toFixed(1)}K L`,
             sub: 'Estimated · 0.88 L/L UCO',
             actual: false,
             color: 'text-earth',
@@ -105,7 +104,7 @@ export default function SustainabilityDashboard() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-bold text-foreground text-base">Annual CO₂ Offset Goal</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Target: 20,000 kg CO₂ by Dec 2026 · Estimated</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Target: 20,000 kg CO₂ by Dec {new Date().getFullYear()} · Estimated</p>
           </div>
           <span className="font-mono-data font-bold text-primary text-lg">
             {Math.round((totalCO2 / 20000) * 100)}%

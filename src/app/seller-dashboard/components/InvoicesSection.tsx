@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Receipt, Download, Search, CheckCircle2, Clock, AlertCircle, FileText } from 'lucide-react';
-import { mockPayments } from '@/lib/mock-data';
+import { sellerApi, type SellerPayment } from '@/lib/seller-api';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { downloadCsv } from '@/lib/download-csv';
 
 
 const statusConfig = {
@@ -15,15 +16,11 @@ const statusConfig = {
   Disputed: { className: 'badge-danger', icon: AlertCircle },
 };
 
-const invoiceData = mockPayments.map((p, i) => ({
-  ...p,
-  description: `UCO Collection Settlement`,
-  period: i === 0 ? 'Sep 2026' : i === 1 ? 'Sep 2026' : i === 2 ? 'Aug 2026' : 'Aug 2026',
-  type: 'Settlement Invoice' as const,
-}));
-
 export default function InvoicesSection() {
+  const [payments,setPayments]=useState<SellerPayment[]>([]);
   const [search, setSearch] = useState('');
+  useEffect(()=>{sellerApi.payments().then(setPayments).catch(()=>setPayments([]))},[]);
+  const invoiceData=payments.map((p)=>({...p,description:'UCO Collection Settlement',period:new Date(p.settledDate||p.dueDate).toLocaleDateString('en-IN',{month:'short',year:'numeric'}),type:'Settlement Invoice' as const}));
 
   const filtered = invoiceData.filter(
     (inv) =>
@@ -32,6 +29,7 @@ export default function InvoicesSection() {
   );
 
   const totalSettled = invoiceData.filter((i) => i.status === 'Settled').reduce((s, i) => s + i.amount, 0);
+  const exportInvoices=(items=invoiceData,name='seller-invoices.csv')=>{downloadCsv(name,[['Invoice','Order','Amount','Status','Due Date','Settled Date','Reference'],...items.map(x=>[x.invoiceNumber,x.orderId,x.amount,x.status,x.dueDate,x.settledDate,x.reference])]);toast.success('Invoice export downloaded')};
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,7 +41,7 @@ export default function InvoicesSection() {
           </p>
         </div>
         <button
-          onClick={() => toast.success('All invoices exported as ZIP')}
+          onClick={() => exportInvoices()}
           className="btn-secondary py-2 text-xs gap-1.5"
         >
           <Download size={13} />
@@ -57,7 +55,7 @@ export default function InvoicesSection() {
           { label: 'Total Invoices', value: invoiceData.length, sub: 'All time', color: 'text-foreground', bg: 'bg-muted', icon: FileText },
           { label: 'Settled', value: invoiceData.filter((i) => i.status === 'Settled').length, sub: `₹${totalSettled.toLocaleString('en-IN')}`, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
           { label: 'Pending', value: invoiceData.filter((i) => ['Pending', 'Processing'].includes(i.status)).length, sub: 'Awaiting settlement', color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
-          { label: 'This Month', value: invoiceData.filter((i) => i.period === 'Sep 2026').length, sub: 'Sep 2026', color: 'text-info', bg: 'bg-info-bg', icon: Receipt },
+          { label: 'This Month', value: invoiceData.filter((i) => i.period === new Date().toLocaleDateString('en-IN',{month:'short',year:'numeric'})).length, sub: new Date().toLocaleDateString('en-IN',{month:'short',year:'numeric'}), color: 'text-info', bg: 'bg-info-bg', icon: Receipt },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -130,7 +128,7 @@ export default function InvoicesSection() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => toast.success(`Downloading ${inv.invoiceNumber}.pdf`)}
+                        onClick={() => exportInvoices([inv],`${inv.invoiceNumber||inv.id}.csv`)}
                         className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors duration-150"
                         title="Download PDF"
                       >

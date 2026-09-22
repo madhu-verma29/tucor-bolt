@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, MapPin, Phone, Landmark, Edit3, Save, X, CheckCircle2, Clock, AlertCircle, XCircle, RefreshCw, Droplets, Calendar, Users, Truck,  } from 'lucide-react';
 import { toast } from 'sonner';
-import { sellerApi, type SellerProfile } from '@/lib/seller-api';
+import { sellerApi, type SellerDashboard, type SellerProfile } from '@/lib/seller-api';
 
 type VerificationStatus = 'verified' | 'pending' | 'under_review' | 'rejected' | 'not_submitted';
 
@@ -270,7 +270,8 @@ const TABS = [
 export default function BusinessProfileSection() {
   const [activeTab, setActiveTab] = useState('company');
   const [profile,setProfile]=useState<SellerProfile|null>(null);
-  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{})},[]);
+  const [dashboard,setDashboard]=useState<SellerDashboard|null>(null);
+  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{});sellerApi.dashboard().then(setDashboard).catch(()=>{})},[]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -304,9 +305,9 @@ export default function BusinessProfileSection() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
           {[
             { icon: Droplets, label: 'Avg UCO/mo', value: profile?.avgMonthlyUco?`${profile.avgMonthlyUco} L`:'—' },
-            { icon: Calendar, label: 'Member Since', value: 'Mar 2026' },
-            { icon: Truck, label: 'Pickups Done', value: '24' },
-            { icon: Users, label: 'Active Orders', value: '3' },
+            { icon: Calendar, label: 'Member Since', value: profile?.memberSince||'—' },
+            { icon: Truck, label: 'Pickups Done', value: String(dashboard?.collectionsCompleted||0) },
+            { icon: Users, label: 'Active Orders', value: String(dashboard?.activeOrders||0) },
           ].map((stat) => {
             const StatIcon = stat.icon;
             return (

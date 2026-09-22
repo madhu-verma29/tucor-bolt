@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TrendingUp, Clock, CheckCircle2, Banknote, ArrowDownToLine, Download, ChevronDown, ChevronUp, X, Building2, AlertCircle, Calendar,  } from 'lucide-react';
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+import { sellerApi, type SellerBankAccount, type SellerOrder, type SellerPayment } from '@/lib/seller-api';
+import { downloadCsv } from '@/lib/download-csv';
 
 interface Settlement {
   id: string;
@@ -29,29 +29,6 @@ interface PendingPayout {
   stage: string;
 }
 
-const mockSettlements: Settlement[] = [
-  { id: 'S001', orderId: 'ORD-2024-0891', invoiceNo: 'INV-2024-0891', volume: 180, pricePerLiter: 38, grossAmount: 6840, platformFee: 342, netAmount: 6498, status: 'Settled', settledDate: '12 Aug 2024', dueDate: '10 Aug 2024', reference: 'UTR8821049302' },
-  { id: 'S002', orderId: 'ORD-2024-0876', invoiceNo: 'INV-2024-0876', volume: 220, pricePerLiter: 36, grossAmount: 7920, platformFee: 396, netAmount: 7524, status: 'Settled', settledDate: '05 Aug 2024', dueDate: '03 Aug 2024', reference: 'UTR8810293847' },
-  { id: 'S003', orderId: 'ORD-2024-0862', invoiceNo: 'INV-2024-0862', volume: 150, pricePerLiter: 40, grossAmount: 6000, platformFee: 300, netAmount: 5700, status: 'Processing', settledDate: null, dueDate: '18 Aug 2024', reference: 'UTR8830192847' },
-  { id: 'S004', orderId: 'ORD-2024-0849', invoiceNo: 'INV-2024-0849', volume: 300, pricePerLiter: 35, grossAmount: 10500, platformFee: 525, netAmount: 9975, status: 'Settled', settledDate: '28 Jul 2024', dueDate: '26 Jul 2024', reference: 'UTR8800192847' },
-  { id: 'S005', orderId: 'ORD-2024-0835', invoiceNo: 'INV-2024-0835', volume: 90, pricePerLiter: 42, grossAmount: 3780, platformFee: 189, netAmount: 3591, status: 'Pending', settledDate: null, dueDate: '22 Aug 2024', reference: '—' },
-  { id: 'S006', orderId: 'ORD-2024-0820', invoiceNo: 'INV-2024-0820', volume: 200, pricePerLiter: 37, grossAmount: 7400, platformFee: 370, netAmount: 7030, status: 'On Hold', settledDate: null, dueDate: '15 Aug 2024', reference: '—' },
-];
-
-const mockPendingPayouts: PendingPayout[] = [
-  { id: 'PP001', orderId: 'ORD-2024-0862', description: 'Palm Oil Collection — 150 L', amount: 5700, expectedDate: '18 Aug 2024', stage: 'TUCOR Verification' },
-  { id: 'PP002', orderId: 'ORD-2024-0835', description: 'Sunflower Oil Collection — 90 L', amount: 3591, expectedDate: '22 Aug 2024', stage: 'Quality Check' },
-  { id: 'PP003', orderId: 'ORD-2024-0820', description: 'Blended Oil Collection — 200 L', amount: 7030, expectedDate: 'On Hold', stage: 'Dispute Review' },
-];
-
-const savedBankAccount = {
-  bankName: 'HDFC Bank',
-  accountHolder: 'Priya Nambiar',
-  accountNumber: '****  ****  4821',
-  ifsc: 'HDFC0001234',
-  accountType: 'Current',
-};
-
 // ─── Status Config ────────────────────────────────────────────────────────────
 
 function statusConfig(status: Settlement['status']) {
@@ -68,10 +45,12 @@ function statusConfig(status: Settlement['status']) {
 
 interface WithdrawalModalProps {
   availableBalance: number;
+  bank: SellerBankAccount;
   onClose: () => void;
+  onSubmit: (amount:number,note:string)=>Promise<void>;
 }
 
-function WithdrawalModal({ availableBalance, onClose }: WithdrawalModalProps) {
+function WithdrawalModal({ availableBalance, bank, onClose, onSubmit }: WithdrawalModalProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -79,12 +58,12 @@ function WithdrawalModal({ availableBalance, onClose }: WithdrawalModalProps) {
 
   const numAmount = parseFloat(amount) || 0;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (numAmount < 500) { setError('Minimum withdrawal is ₹500'); return; }
     if (numAmount > availableBalance) { setError('Amount exceeds available balance'); return; }
     setError('');
-    setSubmitted(true);
+    try{await onSubmit(numAmount,note);setSubmitted(true)}catch(e){setError(e instanceof Error?e.message:'Unable to request withdrawal')}
   }
 
   return (
@@ -111,7 +90,7 @@ function WithdrawalModal({ availableBalance, onClose }: WithdrawalModalProps) {
             <div>
               <p className="font-bold text-foreground text-lg">Withdrawal Requested!</p>
               <p className="text-sm text-muted-foreground mt-1">
-                ₹{numAmount.toLocaleString('en-IN')} will be credited to your {savedBankAccount.bankName} account within 2–3 business days.
+                ₹{numAmount.toLocaleString('en-IN')} will be credited to your {bank.bankName} account within 2–3 business days.
               </p>
             </div>
             <div className="w-full bg-muted/60 rounded-xl p-4 text-left">
@@ -121,7 +100,7 @@ function WithdrawalModal({ availableBalance, onClose }: WithdrawalModalProps) {
               </div>
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-muted-foreground">Bank</span>
-                <span className="font-medium text-foreground">{savedBankAccount.bankName} {savedBankAccount.accountNumber}</span>
+                <span className="font-medium text-foreground">{bank.bankName} {bank.accountNumber}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Expected</span>
@@ -146,8 +125,8 @@ function WithdrawalModal({ availableBalance, onClose }: WithdrawalModalProps) {
                   <Building2 size={15} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{savedBankAccount.bankName} — {savedBankAccount.accountNumber}</p>
-                  <p className="text-xs text-muted-foreground">{savedBankAccount.accountHolder} · {savedBankAccount.accountType} · {savedBankAccount.ifsc}</p>
+                  <p className="text-sm font-semibold text-foreground">{bank.bankName} — {bank.accountNumber}</p>
+                  <p className="text-xs text-muted-foreground">{bank.accountHolder} · {bank.accountType} · {bank.ifsc}</p>
                 </div>
                 <span className="badge-active text-xs flex-shrink-0">Primary</span>
               </div>
@@ -222,17 +201,21 @@ function WithdrawalModal({ availableBalance, onClose }: WithdrawalModalProps) {
 // ─── Main Section ─────────────────────────────────────────────────────────────
 
 export default function SellerEarningsSection() {
+  const [payments,setPayments]=useState<SellerPayment[]>([]);const [orders,setOrders]=useState<SellerOrder[]>([]);const [bank,setBank]=useState<SellerBankAccount>({bankName:'',accountHolder:'',accountNumber:'',ifsc:'',accountType:'',branch:'',upiId:'',verified:false,verifiedAt:''});const [withdrawn,setWithdrawn]=useState(0);
   const [showWithdrawal, setShowWithdrawal] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('All');
 
-  const totalLifetime = 278400;
-  const totalSettledThisMonth = mockSettlements.filter((s) => s.status === 'Settled').reduce((acc, s) => acc + s.netAmount, 0);
-  const totalPending = mockPendingPayouts.reduce((acc, p) => acc + p.amount, 0);
-  const availableBalance = totalSettledThisMonth;
+  useEffect(()=>{Promise.all([sellerApi.payments(),sellerApi.orders(),sellerApi.bankAccount(),sellerApi.withdrawals()]).then(([p,o,b,w])=>{setPayments(p);setOrders(o);setBank(b);setWithdrawn(w.filter(x=>x.status!=='Rejected').reduce((s,x)=>s+x.amount,0))}).catch(()=>{})},[]);
+  const settlements:Settlement[]=payments.map((p)=>{const o=orders.find(x=>x.id===p.orderId);const gross=p.amount;const fee=Math.round(gross*.05);return{id:p.id,orderId:p.orderId,invoiceNo:p.invoiceNumber||'—',volume:o?.volumeLiters||0,pricePerLiter:o&&o.volumeLiters?Math.round(gross/o.volumeLiters):0,grossAmount:gross,platformFee:fee,netAmount:gross-fee,status:p.status==='Failed'||p.status==='Disputed'?'On Hold':p.status,settledDate:p.settledDate||null,dueDate:p.dueDate,reference:p.reference||'—'}});
+  const pendingPayouts:PendingPayout[]=settlements.filter(s=>s.status!=='Settled').map(s=>({id:s.id,orderId:s.orderId,description:`UCO Collection — ${s.volume} L`,amount:s.netAmount,expectedDate:s.dueDate,stage:s.status}));
+  const totalLifetime = settlements.filter(s=>s.status==='Settled').reduce((a,s)=>a+s.netAmount,0);
+  const totalSettledThisMonth = totalLifetime;
+  const totalPending = pendingPayouts.reduce((acc, p) => acc + p.amount, 0);
+  const availableBalance = Math.max(0,totalSettledThisMonth-withdrawn);
 
   const statusFilters = ['All', 'Settled', 'Processing', 'Pending', 'On Hold'];
-  const filtered = filterStatus === 'All' ? mockSettlements : mockSettlements.filter((s) => s.status === filterStatus);
+  const filtered = filterStatus === 'All' ? settlements : settlements.filter((s) => s.status === filterStatus);
 
   return (
     <div className="flex flex-col gap-6">
@@ -254,9 +237,9 @@ export default function SellerEarningsSection() {
       {/* KPI Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Lifetime Earnings', value: `₹${totalLifetime.toLocaleString('en-IN')}`, sub: '67 collections total', color: 'text-success', bg: 'bg-success-bg', icon: TrendingUp },
-          { label: 'Settled This Month', value: `₹${totalSettledThisMonth.toLocaleString('en-IN')}`, sub: `${mockSettlements.filter((s) => s.status === 'Settled').length} payments cleared`, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
-          { label: 'Pending Payouts', value: `₹${totalPending.toLocaleString('en-IN')}`, sub: `${mockPendingPayouts.length} orders in pipeline`, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
+          { label: 'Lifetime Earnings', value: `₹${totalLifetime.toLocaleString('en-IN')}`, sub: `${settlements.filter(s=>s.status==='Settled').length} collections total`, color: 'text-success', bg: 'bg-success-bg', icon: TrendingUp },
+          { label: 'Settled This Month', value: `₹${totalSettledThisMonth.toLocaleString('en-IN')}`, sub: `${settlements.filter((s) => s.status === 'Settled').length} payments cleared`, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
+          { label: 'Pending Payouts', value: `₹${totalPending.toLocaleString('en-IN')}`, sub: `${pendingPayouts.length} orders in pipeline`, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
           { label: 'Available to Withdraw', value: `₹${availableBalance.toLocaleString('en-IN')}`, sub: 'Ready for bank transfer', color: 'text-primary', bg: 'bg-primary/10', icon: Banknote },
         ].map((stat) => {
           const StatIcon = stat.icon;
@@ -278,10 +261,10 @@ export default function SellerEarningsSection() {
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Clock size={16} className="text-warning" />
           <h3 className="font-bold text-foreground text-base">Pending Payouts</h3>
-          <span className="ml-auto badge-pending text-xs">{mockPendingPayouts.length} pending</span>
+          <span className="ml-auto badge-pending text-xs">{pendingPayouts.length} pending</span>
         </div>
         <div className="divide-y divide-border">
-          {mockPendingPayouts.map((payout) => (
+          {pendingPayouts.map((payout) => (
             <div key={`payout-${payout.id}`} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -322,7 +305,7 @@ export default function SellerEarningsSection() {
               ))}
             </div>
             <button
-              onClick={() => {}}
+              onClick={() => downloadCsv('seller-settlements.csv',[['Invoice','Order','Volume','Gross','Platform Fee','Net Payout','Status','Settled Date'],...filtered.map(s=>[s.invoiceNo,s.orderId,s.volume,s.grossAmount,s.platformFee,s.netAmount,s.status,s.settledDate])])}
               className="btn-secondary py-1.5 px-3 text-xs gap-1.5"
             >
               <Download size={12} />
@@ -402,7 +385,7 @@ export default function SellerEarningsSection() {
                             </div>
                             <div>
                               <p className="text-muted-foreground mb-0.5">Bank Account</p>
-                              <p className="font-semibold text-foreground">{savedBankAccount.bankName} {savedBankAccount.accountNumber}</p>
+                              <p className="font-semibold text-foreground">{bank.bankName} {bank.accountNumber}</p>
                             </div>
                           </div>
                         </td>
@@ -424,6 +407,8 @@ export default function SellerEarningsSection() {
       {showWithdrawal && (
         <WithdrawalModal
           availableBalance={availableBalance}
+          bank={bank}
+          onSubmit={async(amount,note)=>{await sellerApi.createWithdrawal(amount,note);setWithdrawn(x=>x+amount)}}
           onClose={() => setShowWithdrawal(false)}
         />
       )}

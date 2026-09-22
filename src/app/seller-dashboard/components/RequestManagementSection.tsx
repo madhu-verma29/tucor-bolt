@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Inbox,
   CheckCircle2,
@@ -22,6 +22,7 @@ import {
   X,
   TrendingUp,
 } from 'lucide-react';
+import { sellerApi, type SellerRequest as ApiSellerRequest } from '@/lib/seller-api';
 
 type RequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Under Review' | 'Expired';
 
@@ -44,101 +45,6 @@ interface BuyerRequest {
   state: string;
   tucorNotes?: string;
 }
-
-const mockRequests: BuyerRequest[] = [
-  {
-    id: 'REQ-2026-0091',
-    listingId: 'LST-2026-0041',
-    listingTitle: 'Palm UCO — 480 L',
-    oilType: 'Palm',
-    gradeLabel: 'A',
-    volumeRequested: 200,
-    pricePerLiter: 28,
-    estimatedValue: 5600,
-    buyerRef: 'BYR-****-0091',
-    useCase: 'Biodiesel Production',
-    notes: 'Need delivery by end of September. Prefer sealed drum packaging.',
-    status: 'Pending',
-    receivedAt: '2026-09-09T10:30:00',
-    expiresAt: '2026-09-12T10:30:00',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    tucorNotes: 'Buyer is TUCOR-verified. Credit score: Excellent.',
-  },
-  {
-    id: 'REQ-2026-0087',
-    listingId: 'LST-2026-0041',
-    listingTitle: 'Palm UCO — 480 L',
-    oilType: 'Palm',
-    gradeLabel: 'A',
-    volumeRequested: 150,
-    pricePerLiter: 28,
-    estimatedValue: 4200,
-    buyerRef: 'BYR-****-0087',
-    useCase: 'Industrial Processing',
-    status: 'Pending',
-    receivedAt: '2026-09-08T14:15:00',
-    expiresAt: '2026-09-11T14:15:00',
-    city: 'Pune',
-    state: 'Maharashtra',
-    tucorNotes: 'Buyer has 12 completed transactions. Verified processor.',
-  },
-  {
-    id: 'REQ-2026-0074',
-    listingId: 'LST-2026-0038',
-    listingTitle: 'Sunflower UCO — 320 L',
-    oilType: 'Sunflower',
-    gradeLabel: 'B',
-    volumeRequested: 320,
-    pricePerLiter: 24,
-    estimatedValue: 7680,
-    buyerRef: 'BYR-****-0074',
-    useCase: 'Biodiesel Production',
-    notes: 'Full volume required. Can arrange pickup within 3 days of approval.',
-    status: 'Approved',
-    receivedAt: '2026-09-05T09:00:00',
-    expiresAt: '2026-09-08T09:00:00',
-    city: 'Nashik',
-    state: 'Maharashtra',
-    tucorNotes: 'Approved. TUCOR scheduling pickup for Sep 11.',
-  },
-  {
-    id: 'REQ-2026-0068',
-    listingId: 'LST-2026-0035',
-    listingTitle: 'Mustard UCO — 200 L',
-    oilType: 'Mustard',
-    gradeLabel: 'B',
-    volumeRequested: 100,
-    pricePerLiter: 22,
-    estimatedValue: 2200,
-    buyerRef: 'BYR-****-0068',
-    useCase: 'Soap / Oleochemical',
-    status: 'Rejected',
-    receivedAt: '2026-09-03T11:45:00',
-    expiresAt: '2026-09-06T11:45:00',
-    city: 'Aurangabad',
-    state: 'Maharashtra',
-    tucorNotes: 'Rejected by seller — volume too small for this listing.',
-  },
-  {
-    id: 'REQ-2026-0055',
-    listingId: 'LST-2026-0029',
-    listingTitle: 'Blended UCO — 600 L',
-    oilType: 'Blended',
-    gradeLabel: 'C',
-    volumeRequested: 400,
-    pricePerLiter: 18,
-    estimatedValue: 7200,
-    buyerRef: 'BYR-****-0055',
-    useCase: 'Industrial Processing',
-    status: 'Under Review',
-    receivedAt: '2026-09-07T16:20:00',
-    expiresAt: '2026-09-10T16:20:00',
-    city: 'Nagpur',
-    state: 'Maharashtra',
-    tucorNotes: 'TUCOR verifying buyer compliance documents.',
-  },
-];
 
 const statusConfig: Record<RequestStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   Pending: { label: 'Pending Review', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30', icon: Clock },
@@ -258,12 +164,13 @@ function ActionModal({ request, action, onClose, onConfirm }: ActionModalProps) 
 }
 
 export default function RequestManagementSection() {
-  const [requests, setRequests] = useState<BuyerRequest[]>(mockRequests);
+  const [requests, setRequests] = useState<ApiSellerRequest[]>([]);
   const [filterStatus, setFilterStatus] = useState<'All' | RequestStatus>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [actionModal, setActionModal] = useState<{ request: BuyerRequest; action: 'approve' | 'reject' } | null>(null);
+  const [actionModal, setActionModal] = useState<{ request: ApiSellerRequest; action: 'approve' | 'reject' } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  useEffect(()=>{sellerApi.requests().then(setRequests).catch(e=>setToast({type:'error',message:e instanceof Error?e.message:'Unable to load requests'}))},[]);
 
   const pendingCount = requests.filter((r) => r.status === 'Pending').length;
 
@@ -279,26 +186,8 @@ export default function RequestManagementSection() {
     return matchesStatus && matchesSearch;
   });
 
-  const handleAction = (id: string, action: 'approve' | 'reject', reason?: string) => {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: action === 'approve' ? 'Approved' : 'Rejected',
-              tucorNotes: action === 'approve' ?'Approved by seller. TUCOR scheduling pickup.'
-                : reason
-                ? `Rejected: ${reason}`
-                : 'Rejected by seller.',
-            }
-          : r
-      )
-    );
-    setActionModal(null);
-    setToast({
-      message: action === 'approve' ? 'Request approved. TUCOR will schedule pickup.' : 'Request rejected and buyer notified.',
-      type: action === 'approve' ? 'success' : 'error',
-    });
+  const handleAction = async (id: string, action: 'approve' | 'reject', reason?: string) => {
+    try{const updated=await sellerApi.decideRequest(id,action,reason);setRequests(prev=>prev.map(r=>r.id===id?updated:r));setActionModal(null);setToast({message:action==='approve'?'Request approved. TUCOR will schedule pickup.':'Request rejected and buyer notified.',type:'success'})}catch(e){setActionModal(null);setToast({message:e instanceof Error?e.message:'Unable to update request',type:'error'})}
     setTimeout(() => setToast(null), 3500);
   };
 

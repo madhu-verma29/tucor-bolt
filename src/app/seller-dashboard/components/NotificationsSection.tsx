@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Truck, CreditCard, ShieldCheck, AlertTriangle, Info, X, CheckCheck, Filter, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { sellerApi } from '@/lib/seller-api';
 
 
 interface Notification {
@@ -14,19 +15,6 @@ interface Notification {
   time: string;
   read: boolean;
 }
-
-const mockNotifications: Notification[] = [
-  { id: 'n1', type: 'payment', title: 'Payment Settled', message: 'Payment of ₹14,300 for order ORD-2026-0174 has been settled to your bank account.', time: '2 hours ago', read: false },
-  { id: 'n2', type: 'pickup', title: 'Pickup Scheduled', message: 'Agent Rajan Mehta will collect 310L of Sunflower UCO on Sep 12, 2026 between 9–11 AM.', time: '5 hours ago', read: false },
-  { id: 'n3', type: 'order', title: 'New Buyer Request', message: 'A buyer has requested 220L of Mustard UCO from listing LST-2026-0033. Review and respond.', time: '1 day ago', read: false },
-  { id: 'n4', type: 'verification', title: 'Listing Verified', message: 'Listing LST-2026-0021 (Soybean, 390L) has passed quality verification and is now Active.', time: '2 days ago', read: true },
-  { id: 'n5', type: 'alert', title: 'Listing Expiring Soon', message: 'Listing LST-2026-0025 (Palm, 180L) expired. Renew it to attract buyers.', time: '3 days ago', read: true },
-  { id: 'n6', type: 'payment', title: 'Payment Processing', message: 'Payment of ₹6,720 for order ORD-2026-0162 is being processed. Expected by Sep 22.', time: '4 days ago', read: true },
-  { id: 'n7', type: 'system', title: 'Platform Update', message: 'TUCOR has updated its UCO quality grading standards. Review the new guidelines in your documents.', time: '5 days ago', read: true },
-  { id: 'n8', type: 'order', title: 'Order Confirmed', message: 'Order ORD-2026-0162 (Palm, 240L) has been confirmed by buyer BYR-****-9015.', time: '6 days ago', read: true },
-  { id: 'n9', type: 'pickup', title: 'Pickup Completed', message: 'Pickup PKP-2026-0081 completed. 648L of Blended UCO collected. Volume confirmed.', time: '1 week ago', read: true },
-  { id: 'n10', type: 'system', title: 'Monthly Report Ready', message: 'Your August 2026 collection report is ready. Download it from the Reports section.', time: '2 weeks ago', read: true },
-];
 
 const typeConfig = {
   payment: { icon: CreditCard, color: 'text-success', bg: 'bg-success-bg' },
@@ -40,8 +28,9 @@ const typeConfig = {
 type FilterType = 'all' | 'unread' | Notification['type'];
 
 export default function NotificationsSection() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
+  useEffect(()=>{sellerApi.notifications().then(items=>setNotifications(items.map(n=>({...n,time:new Date(n.createdAt).toLocaleString('en-IN')})))).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load notifications'))},[]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -51,18 +40,16 @@ export default function NotificationsSection() {
     return n.type === filter;
   });
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    toast.success('All notifications marked as read');
+  const markAllRead = async () => {
+    try{await sellerApi.markAllNotificationsRead();setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));toast.success('All notifications marked as read')}catch(e){toast.error(e instanceof Error?e.message:'Unable to update notifications')}
   };
 
-  const markRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const markRead = async (id: string) => {
+    const item=notifications.find(n=>n.id===id);if(!item||item.read)return;try{await sellerApi.markNotificationRead(id);setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))}catch{}
   };
 
-  const dismiss = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    toast.success('Notification dismissed');
+  const dismiss = async (id: string) => {
+    try{await sellerApi.dismissNotification(id);setNotifications((prev) => prev.filter((n) => n.id !== id));toast.success('Notification dismissed')}catch(e){toast.error(e instanceof Error?e.message:'Unable to dismiss notification')}
   };
 
   const filterTabs: { id: FilterType; label: string }[] = [

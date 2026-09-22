@@ -1,10 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Truck, Calendar, ArrowRight } from 'lucide-react';
-import { mockPickups } from '@/lib/mock-data';
-
-// BACKEND INTEGRATION: GET /api/seller/pickups?status=Scheduled,Assigned&limit=3
+import { sellerApi, type SellerPickup } from '@/lib/seller-api';
 
 function getPickupStatusStyle(status: string) {
   const map: Record<string, string> = {
@@ -23,7 +21,8 @@ interface Props {
 }
 
 export default function UpcomingPickupsPanel({ onNavigate }: Props) {
-  const upcoming = mockPickups.filter((p) => p.status !== 'Completed');
+  const [pickupItems,setPickupItems]=useState<SellerPickup[]>([]);useEffect(()=>{sellerApi.pickups().then(setPickupItems).catch(()=>setPickupItems([]))},[]);
+  const upcoming = pickupItems.filter((p) => p.status !== 'Completed');
 
   return (
     <div className="card overflow-hidden">

@@ -1,26 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import KPIBentoGrid from './KPIBentoGrid';
 import UCOCollectionChart from './UCOCollectionChart';
 import OilTypeBreakdownChart from './OilTypeBreakdownChart';
 import RecentOrdersPanel from './RecentOrdersPanel';
 import UpcomingPickupsPanel from './UpcomingPickupsPanel';
 import PaymentSummaryPanel from './PaymentSummaryPanel';
+import { sellerApi } from '@/lib/seller-api';
 
 interface Props {
   onNavigate: (id: string) => void;
 }
 
 export default function OverviewSection({ onNavigate }: Props) {
+  const [name,setName]=useState('Seller');useEffect(()=>{sellerApi.profile().then(p=>setName(p.primaryContact||p.businessName||'Seller')).catch(()=>{})},[]);
   return (
     <div className="flex flex-col gap-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Good morning, Priya 👋</h1>
+          <h1 className="text-2xl font-bold text-foreground">Good morning, {name.split(' ')[0]} 👋</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Here's your UCO recovery overview for today — Sep 9, 2026
+            Here's your UCO recovery overview for today — {new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
           </p>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-xl">

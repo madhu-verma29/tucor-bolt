@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -10,9 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { mockSustainabilityTimeline } from '@/lib/mock-data';
-
-// BACKEND INTEGRATION: GET /api/seller/collections/timeline?range=12months
+import { sellerApi, type SellerTimeline } from '@/lib/seller-api';
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -45,12 +43,13 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export default function UCOCollectionChart() {
+  const [timeline,setTimeline]=useState<SellerTimeline[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setTimeline(x.timeline)).catch(()=>setTimeline([]))},[]);
   return (
     <div className="card p-5 h-full">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="font-bold text-foreground text-base">UCO Collection Volume</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Monthly liters collected — Oct 2025 to Sep 2026</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Monthly liters collected — rolling 12 months</p>
         </div>
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
@@ -65,7 +64,7 @@ export default function UCOCollectionChart() {
       </div>
 
       <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={mockSustainabilityTimeline} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <AreaChart data={timeline} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="gradUCO" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.25} />

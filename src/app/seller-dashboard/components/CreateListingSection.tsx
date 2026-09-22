@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   ArrowLeft,
   Droplets,
@@ -14,6 +14,8 @@ import {
   Send,
   ChevronDown,
 } from 'lucide-react';
+import { sellerApi, type SellerListingInput, uploadSellerListingDocument } from '@/lib/seller-api';
+import { toast } from 'sonner';
 
 interface Props {
   listingId?: string; // if provided, we're in edit mode
@@ -41,6 +43,8 @@ interface UploadedDoc {
   size: string;
   type: string;
   status: 'uploading' | 'done' | 'error';
+  file?: File;
+  persisted?: boolean;
 }
 
 const OIL_TYPES = ['Palm', 'Sunflower', 'Mustard', 'Blended', 'Soybean'];
@@ -87,6 +91,10 @@ export default function CreateListingSection({ listingId, onBack }: Props) {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'saving' | 'submitting' | 'success'>('idle');
   const [dragOver, setDragOver] = useState(false);
 
+  useEffect(()=>{if(!listingId)return;Promise.all([sellerApi.listing(listingId),sellerApi.listingDocuments(listingId)]).then(([l,d])=>{setForm({oilType:l.oilType,grade:l.gradeLabel,volumeLiters:String(l.volumeLiters),pricePerLiter:String(l.pricePerLiter),collectionFrequency:l.collectionFrequency,availableFrom:l.availableFrom||'',availableTo:l.availableTo||'',pickupDays:l.pickupDays||[],pickupTimeSlot:l.pickupTimeSlot||'Flexible',location:l.location,storageType:l.storageType||'Sealed drums',notes:l.notes||''});setDocs(d.map(x=>({id:x.id,name:x.name,size:formatBytes(x.sizeBytes),type:x.contentType,status:'done',persisted:true}))) }).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load listing'))},[listingId]);
+  const payload=(status:'Draft'|'Pending Verification'):SellerListingInput=>({oilType:form.oilType,grade:form.grade,volumeLiters:Number(form.volumeLiters)||0,pricePerLiter:Number(form.pricePerLiter)||0,collectionFrequency:form.collectionFrequency,availableFrom:form.availableFrom||undefined,availableTo:form.availableTo||undefined,pickupDays:form.pickupDays,pickupTimeSlot:form.pickupTimeSlot,location:form.location,storageType:form.storageType,notes:form.notes,status});
+  const persistDocuments=async(id:string)=>{for(const doc of docs.filter(d=>d.file&&!d.persisted)){await uploadSellerListingDocument(id,doc.file!)} };
+
   const set = (field: keyof FormData, value: string | string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -113,17 +121,15 @@ export default function CreateListingSection({ listingId, onBack }: Props) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     setSubmitStatus('saving');
-    // BACKEND INTEGRATION: POST /api/seller/listings { ...form, status: 'Draft' }
-    setTimeout(() => setSubmitStatus('idle'), 1200);
+    try{const saved=isEdit?await sellerApi.updateListing(listingId!,payload('Draft')):await sellerApi.createListing(payload('Draft'));await persistDocuments(saved.id);toast.success('Draft saved');onBack()}catch(e){toast.error(e instanceof Error?e.message:'Unable to save draft');setSubmitStatus('idle')}
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
     setSubmitStatus('submitting');
-    // BACKEND INTEGRATION: POST /api/seller/listings { ...form, status: 'Pending Verification' }
-    setTimeout(() => setSubmitStatus('success'), 1500);
+    try{const saved=isEdit?await sellerApi.updateListing(listingId!,payload('Pending Verification')):await sellerApi.createListing(payload('Pending Verification'));await persistDocuments(saved.id);setSubmitStatus('success')}catch(e){toast.error(e instanceof Error?e.message:'Unable to submit listing');setSubmitStatus('idle')}
   };
 
   const processFiles = (files: FileList | null) => {
@@ -137,19 +143,14 @@ export default function CreateListingSection({ listingId, onBack }: Props) {
         name: file.name,
         size: formatBytes(file.size),
         type: ext.replace('.', '').toUpperCase(),
-        status: 'uploading',
+        status: 'done',
+        file,
       };
       setDocs((prev) => [...prev, doc]);
-      // BACKEND INTEGRATION: POST /api/seller/listings/documents (multipart)
-      setTimeout(() => {
-        setDocs((prev) =>
-          prev.map((d) => (d.id === doc.id ? { ...d, status: 'done' } : d))
-        );
-      }, 1200 + Math.random() * 800);
     });
   };
 
-  const removeDoc = (id: string) => setDocs((prev) => prev.filter((d) => d.id !== id));
+  const removeDoc = async (id: string) => {const doc=docs.find(d=>d.id===id);if(doc?.persisted&&listingId){try{await sellerApi.deleteListingDocument(listingId,id)}catch(e){toast.error(e instanceof Error?e.message:'Unable to remove document');return}}setDocs((prev) => prev.filter((d) => d.id !== id));};
 
   if (submitStatus === 'success') {
     return (

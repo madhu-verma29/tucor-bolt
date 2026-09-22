@@ -1,21 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CreditCard, ArrowRight, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import { mockPayments } from '@/lib/mock-data';
-
-// BACKEND INTEGRATION: GET /api/seller/payments?limit=4&sort=dueDate:asc
+import { sellerApi, type SellerPayment } from '@/lib/seller-api';
 
 interface Props {
   onNavigate: (id: string) => void;
 }
 
 export default function PaymentSummaryPanel({ onNavigate }: Props) {
-  const totalPending = mockPayments
+  const [paymentItems,setPaymentItems]=useState<SellerPayment[]>([]);useEffect(()=>{sellerApi.payments().then(setPaymentItems).catch(()=>setPaymentItems([]))},[]);
+  const totalPending = paymentItems
     .filter((p) => p.status === 'Pending' || p.status === 'Processing')
     .reduce((sum, p) => sum + p.amount, 0);
 
-  const totalSettled = mockPayments
+  const totalSettled = paymentItems
     .filter((p) => p.status === 'Settled')
     .reduce((sum, p) => sum + p.amount, 0);
 
@@ -52,7 +51,7 @@ export default function PaymentSummaryPanel({ onNavigate }: Props) {
 
       {/* Payment list */}
       <div className="divide-y divide-border">
-        {mockPayments.map((payment) => {
+        {paymentItems.map((payment) => {
           const statusConfig = {
             Pending: { icon: Clock, className: 'text-warning', bg: 'bg-warning-bg' },
             Processing: { icon: Clock, className: 'text-info', bg: 'bg-info-bg' },

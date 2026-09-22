@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,9 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { mockOilTypeBreakdown } from '@/lib/mock-data';
-
-// BACKEND INTEGRATION: GET /api/seller/collections/by-oil-type
+import { sellerApi } from '@/lib/seller-api';
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -36,6 +34,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 }
 
 export default function OilTypeBreakdownChart() {
+  const [oilTypes,setOilTypes]=useState<{oilType:string;liters:number;color:string}[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setOilTypes(x.oilTypes)).catch(()=>setOilTypes([]))},[]);
   return (
     <div className="card p-5 h-full">
       <div className="mb-5">
@@ -45,7 +44,7 @@ export default function OilTypeBreakdownChart() {
 
       <ResponsiveContainer width="100%" height={220}>
         <BarChart
-          data={mockOilTypeBreakdown}
+          data={oilTypes}
           margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
           barSize={28}
         >
@@ -64,7 +63,7 @@ export default function OilTypeBreakdownChart() {
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.5 }} />
           <Bar dataKey="liters" radius={[6, 6, 0, 0]}>
-            {mockOilTypeBreakdown.map((entry, index) => (
+            {oilTypes.map((entry, index) => (
               <Cell key={`cell-oiltype-${index}`} fill={entry.color} />
             ))}
           </Bar>
@@ -73,7 +72,7 @@ export default function OilTypeBreakdownChart() {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-4">
-        {mockOilTypeBreakdown.map((item) => (
+        {oilTypes.map((item) => (
           <div key={`legend-${item.oilType}`} className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
             <span>{item.oilType}</span>

@@ -1,10 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDown, Clock, CheckCircle2, Truck, AlertCircle, XCircle } from 'lucide-react';
-import { mockOrders, Order } from '@/lib/mock-data';
-
-// BACKEND INTEGRATION: GET /api/seller/orders
+import { sellerApi, type SellerOrder as Order } from '@/lib/seller-api';
 
 const ORDER_TIMELINE_STEPS = [
   'Requested',
@@ -81,7 +79,9 @@ function getStatusIcon(status: Order['status']) {
 }
 
 export default function OrdersSection() {
-  const [expandedId, setExpandedId] = useState<string | null>('ORD-2026-0187');
+  const [orderItems,setOrderItems]=useState<Order[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  useEffect(()=>{sellerApi.orders().then(items=>{setOrderItems(items);setExpandedId(items[0]?.id||null)}).catch(()=>setOrderItems([]))},[]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -89,13 +89,13 @@ export default function OrdersSection() {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Orders</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {mockOrders.length} orders · {mockOrders.filter((o) => ['Requested', 'Under Review', 'Confirmed'].includes(o.status)).length} active
+            {orderItems.length} orders · {orderItems.filter((o) => ['Requested', 'Under Review', 'Confirmed'].includes(o.status)).length} active
           </p>
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
-        {mockOrders.map((order) => {
+        {orderItems.map((order) => {
           const isExpanded = expandedId === order.id;
           const StatusIcon = getStatusIcon(order.status);
           const statusColors: Record<string, string> = {

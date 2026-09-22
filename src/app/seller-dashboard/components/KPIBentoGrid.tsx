@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Droplets,
   CheckCircle2,
@@ -12,7 +12,7 @@ import {
   TrendingDown,
   AlertTriangle,
 } from 'lucide-react';
-import { sellerProfile } from '@/lib/mock-data';
+import { sellerApi, type SellerDashboard } from '@/lib/seller-api';
 import Icon from '@/components/ui/AppIcon';
 
 
@@ -103,6 +103,7 @@ interface Props {
 }
 
 export default function KPIBentoGrid({ onNavigate }: Props) {
+  const [metrics,setMetrics]=useState<SellerDashboard|null>(null);useEffect(()=>{sellerApi.dashboard().then(setMetrics).catch(()=>{})},[]);
   // Grid plan: 6 cards → grid-cols-2 md:grid-cols-3 xl:grid-cols-6
   // Row 1 (xl): hero spans 2 cols + 4 regular = 6 cols total
   // Row 1 (md): 3 per row × 2 rows
@@ -114,8 +115,8 @@ export default function KPIBentoGrid({ onNavigate }: Props) {
           id="kpi-uco-available"
           icon={Droplets}
           label="UCO Available"
-          value="940 L"
-          sublabel="Across 3 active listings — ready for matching"
+          value={`${metrics?.ucoAvailable||0} L`}
+          sublabel={`Across ${metrics?.activeListings||0} active listings — ready for matching`}
           trend={{ direction: 'up', label: '+12% vs last month' }}
           variant="hero"
           onClick={() => onNavigate('listings')}
@@ -127,8 +128,8 @@ export default function KPIBentoGrid({ onNavigate }: Props) {
         id="kpi-uco-collected"
         icon={CheckCircle2}
         label="UCO Collected"
-        value={`${(sellerProfile.totalUCOCollected / 1000).toFixed(1)}K L`}
-        sublabel="Lifetime total — 67 collections"
+        value={`${((metrics?.totalUcoCollected||0) / 1000).toFixed(1)}K L`}
+        sublabel={`Lifetime total — ${metrics?.collectionsCompleted||0} collections`}
         trend={{ direction: 'up', label: '+8.4% YoY' }}
         variant="success"
         onClick={() => onNavigate('pickups')}
@@ -139,8 +140,8 @@ export default function KPIBentoGrid({ onNavigate }: Props) {
         id="kpi-listings"
         icon={ListChecks}
         label="Active Listings"
-        value="3"
-        sublabel="1 pending verification"
+        value={String(metrics?.activeListings||0)}
+        sublabel={`${metrics?.totalListings||0} total listings`}
         trend={{ direction: 'neutral', label: 'Stable' }}
         variant="default"
         onClick={() => onNavigate('listings')}
@@ -151,8 +152,8 @@ export default function KPIBentoGrid({ onNavigate }: Props) {
         id="kpi-orders"
         icon={ShoppingCart}
         label="Pending Orders"
-        value="2"
-        sublabel="ORD-0149 needs attention"
+        value={String(metrics?.activeOrders||0)}
+        sublabel="Orders requiring attention"
         variant="warning"
         onClick={() => onNavigate('orders')}
       />
@@ -162,8 +163,8 @@ export default function KPIBentoGrid({ onNavigate }: Props) {
         id="kpi-payment"
         icon={CreditCard}
         label="Next Payment Due"
-        value="₹9,610"
-        sublabel="Due Sep 19 — PAY-2026-0071"
+        value={`₹${(metrics?.pendingPayments||0).toLocaleString('en-IN')}`}
+        sublabel="Awaiting settlement"
         trend={{ direction: 'neutral', label: 'On schedule' }}
         variant="amber"
         onClick={() => onNavigate('payments')}
@@ -175,7 +176,7 @@ export default function KPIBentoGrid({ onNavigate }: Props) {
           id="kpi-co2"
           icon={Leaf}
           label="CO₂ Offset (Est.)"
-          value={`${(sellerProfile.co2OffsetKg / 1000).toFixed(1)}T kg`}
+          value={`${((metrics?.co2OffsetKg||0) / 1000).toFixed(1)}T kg`}
           sublabel="Lifetime · 1.4 kg offset per liter"
           trend={{ direction: 'up', label: '+907 kg this month' }}
           variant="success"

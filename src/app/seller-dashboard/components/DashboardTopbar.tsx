@@ -5,7 +5,7 @@ import { Menu, PanelLeftClose, Bell, Search, Plus, ChevronDown, LogOut, User, Se
 import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
-import { sellerApi, type SellerProfile } from '@/lib/seller-api';
+import { sellerApi, type SellerProfile, type SellerNotification } from '@/lib/seller-api';
 
 
 interface Props {
@@ -14,21 +14,14 @@ interface Props {
   sidebarCollapsed: boolean;
 }
 
-const notifications = [
-  { id: 'notif-001', type: 'pickup', message: 'Pickup PKP-2026-0094 confirmed for Sep 12', time: '2 hrs ago', unread: true },
-  { id: 'notif-002', type: 'payment', message: 'Payment PAY-2026-0058 of ₹14,300 settled', time: '1 day ago', unread: true },
-  { id: 'notif-003', type: 'order', message: 'New order ORD-2026-0149 under review by TUCOR', time: '3 hrs ago', unread: true },
-  { id: 'notif-004', type: 'listing', message: 'Listing LST-2026-0021 pending verification', time: '5 hrs ago', unread: false },
-  { id: 'notif-005', type: 'system', message: 'Your account verification badge renewed for 2027', time: '2 days ago', unread: false },
-];
-
 export default function DashboardTopbar({ onToggleSidebar, onMobileMenuOpen, sidebarCollapsed }: Props) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const [profile,setProfile]=useState<SellerProfile|null>(null);
-  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{})},[]);
+  const [notifications,setNotifications]=useState<(SellerNotification&{time:string;unread:boolean})[]>([]);
+  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{});sellerApi.notifications().then(x=>setNotifications(x.slice(0,5).map(n=>({...n,time:new Date(n.createdAt).toLocaleString('en-IN'),unread:!n.read})))).catch(()=>{})},[]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

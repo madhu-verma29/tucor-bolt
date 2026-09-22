@@ -1,10 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, Clock, CheckCircle2, Truck, AlertCircle, XCircle } from 'lucide-react';
-import { mockOrders, Order } from '@/lib/mock-data';
-
-// BACKEND INTEGRATION: GET /api/seller/orders?limit=5&sort=updatedAt:desc
+import { sellerApi, type SellerOrder as Order } from '@/lib/seller-api';
 
 function getOrderStatusBadge(status: Order['status']) {
   const map: Record<string, { label: string; className: string; icon: React.ElementType }> = {
@@ -30,6 +28,7 @@ interface Props {
 }
 
 export default function RecentOrdersPanel({ onNavigate }: Props) {
+  const [orderItems,setOrderItems]=useState<Order[]>([]);useEffect(()=>{sellerApi.orders().then(x=>setOrderItems(x.slice(0,5))).catch(()=>setOrderItems([]))},[]);
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -46,7 +45,7 @@ export default function RecentOrdersPanel({ onNavigate }: Props) {
       </div>
 
       <div className="divide-y divide-border">
-        {mockOrders.map((order) => {
+        {orderItems.map((order) => {
           const statusInfo = getOrderStatusBadge(order.status);
           const StatusIcon = statusInfo.icon;
           return (

@@ -1,0 +1,3 @@
+package in.tucor.api.seller;
+import jakarta.persistence.*;import java.time.Instant;import java.util.UUID;
+@Entity @Table(name="seller_listing_documents") public class SellerListingDocument {@Id public UUID id;@Column(name="listing_id") public UUID listingId;@Column(name="original_filename") public String originalFilename;@Column(name="stored_filename") public String storedFilename;@Column(name="content_type") public String contentType;@Column(name="size_bytes") public long sizeBytes;@Column(name="created_at") public Instant createdAt;@PrePersist void create(){if(id==null)id=UUID.randomUUID();if(createdAt==null)createdAt=Instant.now();}}

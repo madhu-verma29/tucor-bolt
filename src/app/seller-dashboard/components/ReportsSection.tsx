@@ -1,46 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Download, TrendingUp, Droplets, Leaf, CreditCard, Calendar } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { mockSustainabilityTimeline } from '@/lib/mock-data';
+import { sellerApi, type SellerTimeline } from '@/lib/seller-api';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { downloadCsv } from '@/lib/download-csv';
 
-
-const monthlyEarnings = [
-  { month: 'Oct', earnings: 18200, collections: 4 },
-  { month: 'Nov', earnings: 22400, collections: 5 },
-  { month: 'Dec', earnings: 15600, collections: 3 },
-  { month: 'Jan', earnings: 28900, collections: 6 },
-  { month: 'Feb', earnings: 25100, collections: 5 },
-  { month: 'Mar', earnings: 32400, collections: 7 },
-  { month: 'Apr', earnings: 23800, collections: 5 },
-  { month: 'May', earnings: 36700, collections: 8 },
-  { month: 'Jun', earnings: 30600, collections: 6 },
-  { month: 'Jul', earnings: 26800, collections: 6 },
-  { month: 'Aug', earnings: 40500, collections: 9 },
-  { month: 'Sep', earnings: 17700, collections: 3 },
-];
 
 const reportTypes = [
-  { id: 'monthly', label: 'Monthly Collection Report', desc: 'UCO volumes, oil types, and collection frequency', icon: '📦', period: 'Aug 2026' },
-  { id: 'earnings', label: 'Earnings Summary', desc: 'Payment history, settlements, and payout breakdown', icon: '💰', period: 'Aug 2026' },
-  { id: 'sustainability', label: 'Sustainability Impact Report', desc: 'CO₂ offset, circular economy contribution', icon: '🌿', period: 'FY 2025–26' },
-  { id: 'tax', label: 'Tax & GST Report', desc: 'GST-compliant transaction summary for accounting', icon: '🧾', period: 'FY 2025–26' },
-  { id: 'annual', label: 'Annual Performance Report', desc: 'Year-over-year UCO recovery and earnings growth', icon: '📊', period: 'FY 2025–26' },
+  { id: 'monthly', label: 'Monthly Collection Report', desc: 'UCO volumes, oil types, and collection frequency', icon: '📦', period: new Date().toLocaleDateString('en-IN',{month:'short',year:'numeric'}) },
+  { id: 'earnings', label: 'Earnings Summary', desc: 'Payment history, settlements, and payout breakdown', icon: '💰', period: new Date().toLocaleDateString('en-IN',{month:'short',year:'numeric'}) },
+  { id: 'sustainability', label: 'Sustainability Impact Report', desc: 'CO₂ offset, circular economy contribution', icon: '🌿', period: `FY ${new Date().getFullYear()-1}–${String(new Date().getFullYear()).slice(-2)}` },
+  { id: 'tax', label: 'Tax & GST Report', desc: 'GST-compliant transaction summary for accounting', icon: '🧾', period: `FY ${new Date().getFullYear()-1}–${String(new Date().getFullYear()).slice(-2)}` },
+  { id: 'annual', label: 'Annual Performance Report', desc: 'Year-over-year UCO recovery and earnings growth', icon: '📊', period: `FY ${new Date().getFullYear()-1}–${String(new Date().getFullYear()).slice(-2)}` },
 ];
 
 export default function ReportsSection() {
+  const [monthlyEarnings,setMonthlyEarnings]=useState<SellerTimeline[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setMonthlyEarnings(x.timeline)).catch(()=>setMonthlyEarnings([]))},[]);
   const [period, setPeriod] = useState<'3m' | '6m' | '12m'>('12m');
 
   const slicedData = period === '3m' ? monthlyEarnings.slice(-3) : period === '6m' ? monthlyEarnings.slice(-6) : monthlyEarnings;
   const totalEarnings = slicedData.reduce((s, d) => s + d.earnings, 0);
-  const totalCollections = slicedData.reduce((s, d) => s + d.collections, 0);
-  const totalUCO = mockSustainabilityTimeline.reduce((s, d) => s + d.ucoCollectedLiters, 0);
-  const totalCO2 = mockSustainabilityTimeline.reduce((s, d) => s + d.co2OffsetKg, 0);
+  const totalCollections = slicedData.reduce((s, d) => s + d.collectionsCount, 0);
+  const totalUCO = slicedData.reduce((s, d) => s + d.ucoCollectedLiters, 0);
+  const totalCO2 = slicedData.reduce((s, d) => s + d.co2OffsetKg, 0);
+  const downloadReport=(label:string)=>{downloadCsv(`${label.toLowerCase().replaceAll(' ','-')}.csv`,[['Month','UCO Collected (L)','CO2 Offset (kg)','Collections','Earnings'],...slicedData.map(x=>[x.month,x.ucoCollectedLiters,x.co2OffsetKg,x.collectionsCount,x.earnings])]);toast.success(`${label} downloaded`)};
 
   return (
     <div className="flex flex-col gap-6">
@@ -117,7 +105,7 @@ export default function ReportsSection() {
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: number) => [v, 'Collections']} contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }} />
-              <Bar dataKey="collections" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="collectionsCount" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -144,7 +132,7 @@ export default function ReportsSection() {
                   {report.period}
                 </div>
                 <button
-                  onClick={() => toast.success(`Generating ${report.label}...`)}
+                  onClick={() => downloadReport(report.label)}
                   className="btn-secondary py-1.5 text-xs gap-1.5"
                 >
                   <Download size={12} />

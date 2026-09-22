@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Plus, Search, Filter, ChevronUp, ChevronDown, Edit2, Trash2, Eye, Droplets, AlertTriangle,  } from 'lucide-react';
-import { mockListings, UCOListing } from '@/lib/mock-data';
+import { sellerApi, type SellerListing as UCOListing } from '@/lib/seller-api';
 import { toast } from 'sonner';
 import CreateListingSection from './CreateListingSection';
-
-// BACKEND INTEGRATION: GET /api/seller/listings
 
 type SortKey = keyof Pick<UCOListing, 'id' | 'oilType' | 'volumeLiters' | 'gradeLabel' | 'pricePerLiter' | 'status' | 'createdAt'>;
 
@@ -28,6 +26,7 @@ function getGradeBadge(grade: UCOListing['gradeLabel']) {
 }
 
 export default function ListingsSection() {
+  const [listings,setListings]=useState<UCOListing[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
@@ -42,7 +41,7 @@ export default function ListingsSection() {
   const statusOptions = ['All', 'Active', 'Matched', 'Pending Verification', 'Draft', 'Completed', 'Expired'];
 
   const filtered = useMemo(() => {
-    let items = [...mockListings];
+    let items = [...listings];
     if (search) {
       const q = search.toLowerCase();
       items = items.filter(
@@ -59,7 +58,10 @@ export default function ListingsSection() {
         : String(bv).localeCompare(String(av));
     });
     return items;
-  }, [search, statusFilter, sortKey, sortDir]);
+  }, [listings, search, statusFilter, sortKey, sortDir]);
+
+  const load=()=>sellerApi.listings().then(setListings).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load listings'));
+  useEffect(()=>{load()},[]);
 
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
   const totalPages = Math.ceil(filtered.length / perPage);
@@ -78,17 +80,15 @@ export default function ListingsSection() {
     else setSelectedIds(paginated.map((l) => l.id));
   };
 
-  const handleDelete = (id: string) => {
-    // BACKEND INTEGRATION: DELETE /api/seller/listings/:id
-    setDeleteConfirmId(null);
-    toast.success(`Listing ${id} deleted`);
+  const handleDelete = async (id: string) => {
+    try{await sellerApi.deleteListing(id);setListings(prev=>prev.filter(x=>x.id!==id));setDeleteConfirmId(null);toast.success(`Listing ${id} deleted`)}catch(e){toast.error(e instanceof Error?e.message:'Unable to delete listing')}
   };
 
   if (view === 'create' || view === 'edit') {
     return (
       <CreateListingSection
         listingId={view === 'edit' ? editListingId : undefined}
-        onBack={() => { setView('list'); setEditListingId(undefined); }}
+        onBack={() => { setView('list'); setEditListingId(undefined); load(); }}
       />
     );
   }
@@ -115,7 +115,7 @@ export default function ListingsSection() {
         <div>
           <h2 className="text-2xl font-bold text-foreground">UCO Listings</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {filtered.length} listing{filtered.length !== 1 ? 's' : ''} · {mockListings.filter((l) => l.status === 'Active').length} active
+            {filtered.length} listing{filtered.length !== 1 ? 's' : ''} · {listings.filter((l) => l.status === 'Active').length} active
           </p>
         </div>
         <button className="btn-primary" onClick={() => setView('create')}>

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Building2, ShieldCheck, Phone, Settings, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, EyeOff, Upload, ChevronRight, MapPin, Mail, Hash, Landmark, Lock, Trash2, RefreshCw, Info,  } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
 import { toast } from 'sonner';
-import { downloadSellerDocument, sellerApi, uploadSellerDocument, type SellerDocument } from '@/lib/seller-api';
+import { downloadSellerDocument, sellerApi, uploadSellerDocument, type SellerDocument, type SellerPayment } from '@/lib/seller-api';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -335,9 +335,10 @@ function BankAccountTab() {
   const [form, setForm] = useState({
     accountHolder: '', accountNumber: '', ifsc: '', bankName: '', branch: '', accountType: '',
   });
+  const [verified,setVerified]=useState(false);const [verifiedAt,setVerifiedAt]=useState('');const [settlements,setSettlements]=useState<SellerPayment[]>([]);
   const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const masked = '•••• •••• •••• ' + form.accountNumber.slice(-4);
-  useEffect(()=>{sellerApi.bankAccount().then(b=>setForm({accountHolder:b.accountHolder,accountNumber:b.accountNumber,ifsc:b.ifsc,bankName:b.bankName,branch:b.branch,accountType:b.accountType})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank account'))},[]);
+  useEffect(()=>{Promise.all([sellerApi.bankAccount(),sellerApi.payments()]).then(([b,p])=>{setForm({accountHolder:b.accountHolder,accountNumber:b.accountNumber,ifsc:b.ifsc,bankName:b.bankName,branch:b.branch,accountType:b.accountType});setVerified(b.verified);setVerifiedAt(b.verifiedAt);setSettlements(p)}).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank account'))},[]);
   const save=async()=>{try{await sellerApi.updateBankAccount({accountHolder:form.accountHolder,accountNumber:form.accountNumber,ifsc:form.ifsc,bankName:form.bankName,branch:form.branch,accountType:form.accountType,upiId:''});setEditing(false);toast.success('Bank account saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save bank account')}};
 
   return (
@@ -359,7 +360,7 @@ function BankAccountTab() {
         {/* Verified chip */}
         <div className="flex items-center gap-2 mb-5 p-3 rounded-xl bg-success-bg border border-green-200">
           <CheckCircle2 size={15} className="text-success flex-shrink-0" />
-          <span className="text-xs font-medium text-success">Bank account verified via penny-drop verification on 10 Aug 2026</span>
+          <span className="text-xs font-medium text-success">{verified?`Bank account verified${verifiedAt?` on ${new Date(verifiedAt).toLocaleDateString('en-IN')}`:''}`:'Bank account verification pending'}</span>
         </div>
 
         {editing ? (
@@ -416,17 +417,12 @@ function BankAccountTab() {
               </tr>
             </thead>
             <tbody>
-              {[
-                { ref: 'SETL-2026-0091', order: 'ORD-2026-0041', amount: '₹13,440', date: '05 Sep 2026', status: 'Settled' },
-                { ref: 'SETL-2026-0078', order: 'ORD-2026-0035', amount: '₹8,680', date: '28 Aug 2026', status: 'Settled' },
-                { ref: 'SETL-2026-0063', order: 'ORD-2026-0029', amount: '₹11,200', date: '15 Aug 2026', status: 'Settled' },
-                { ref: 'SETL-2026-0051', order: 'ORD-2026-0022', amount: '₹6,300', date: '02 Aug 2026', status: 'Processing' },
-              ].map((row) => (
-                <tr key={row.ref} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                  <td className="py-3 pr-4 font-mono-data text-xs text-foreground">{row.ref}</td>
-                  <td className="py-3 pr-4 font-mono-data text-xs text-muted-foreground">{row.order}</td>
-                  <td className="py-3 pr-4 font-semibold text-foreground">{row.amount}</td>
-                  <td className="py-3 pr-4 text-xs text-muted-foreground">{row.date}</td>
+              {settlements.map((row) => (
+                <tr key={row.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                  <td className="py-3 pr-4 font-mono-data text-xs text-foreground">{row.reference||row.id}</td>
+                  <td className="py-3 pr-4 font-mono-data text-xs text-muted-foreground">{row.orderId}</td>
+                  <td className="py-3 pr-4 font-semibold text-foreground">₹{row.amount.toLocaleString('en-IN')}</td>
+                  <td className="py-3 pr-4 text-xs text-muted-foreground">{row.settledDate||row.dueDate||'—'}</td>
                   <td className="py-3 pr-4">
                     <span className={row.status === 'Settled' ? 'badge-active text-xs' : 'badge-pending text-xs'}>
                       {row.status}

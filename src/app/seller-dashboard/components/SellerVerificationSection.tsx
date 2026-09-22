@@ -22,37 +22,36 @@ interface ComplianceDoc {
   required: boolean;
 }
 
-const mockDocs: ComplianceDoc[] = [
+const documentTemplates: ComplianceDoc[] = [
   {
     id: 'fssai', name: 'FSSAI License', required: true,
     description: 'Food Safety and Standards Authority of India license for food business operations',
-    status: 'Verified', submittedAt: '2026-03-10', expiresAt: '2027-03-09',
+    status: 'Not Submitted',
   },
   {
     id: 'gst', name: 'GST Certificate', required: true,
     description: 'Goods and Services Tax registration certificate',
-    status: 'Verified', submittedAt: '2026-03-10',
+    status: 'Not Submitted',
   },
   {
     id: 'address', name: 'Address Proof', required: true,
     description: 'Registered business address proof (utility bill, rent agreement, etc.)',
-    status: 'Verified', submittedAt: '2026-03-12',
+    status: 'Not Submitted',
   },
   {
     id: 'bank', name: 'Bank Details / Cancelled Cheque', required: true,
     description: 'Cancelled cheque or bank statement for payment settlement',
-    status: 'Verified', submittedAt: '2026-03-12',
+    status: 'Not Submitted',
   },
   {
     id: 'pan', name: 'PAN Card', required: true,
     description: 'Permanent Account Number card of the business or proprietor',
-    status: 'Pending', submittedAt: '2026-09-05',
+    status: 'Not Submitted',
   },
   {
     id: 'trade', name: 'Trade License', required: false,
     description: 'Municipal trade license for operating a food business',
-    status: 'Rejected', submittedAt: '2026-08-20',
-    rejectionReason: 'Document appears to be expired. Please upload the renewed trade license.',
+    status: 'Not Submitted',
   },
   {
     id: 'pollution', name: 'Pollution Control Certificate', required: false,
@@ -71,10 +70,10 @@ const statusConfig: Record<DocStatus, { cls: string; icon: React.ReactNode; labe
 
 export default function SellerVerificationSection() {
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
-  const [docs,setDocs]=useState<ComplianceDoc[]>(mockDocs.map(d=>({...d,status:'Not Submitted' as DocStatus,submittedAt:undefined,expiresAt:undefined,rejectionReason:undefined})));
+  const [docs,setDocs]=useState<ComplianceDoc[]>(documentTemplates);
   const apiDocs=React.useRef<Record<string,SellerDocument>>({});
   const typeById:Record<string,string>={fssai:'FSSAI',gst:'GST',address:'ADDRESS_PROOF',bank:'BANK_PROOF',pan:'PAN',trade:'TRADE_LICENSE',pollution:'POLLUTION_CERTIFICATE'};
-  const load=()=>sellerApi.documents().then(items=>{apiDocs.current=Object.fromEntries(items.map(d=>[d.type,d]));setDocs(mockDocs.map(template=>{const d=apiDocs.current[typeById[template.id]];return d?{...template,status:(d.status==='VERIFIED'?'Verified':d.status==='REJECTED'?'Rejected':d.status==='EXPIRED'?'Expired':'Pending') as DocStatus,submittedAt:d.uploadedAt.slice(0,10),expiresAt:d.expiresAt||undefined,rejectionReason:d.rejectionReason||undefined}:{...template,status:'Not Submitted',submittedAt:undefined,expiresAt:undefined,rejectionReason:undefined}}))});
+  const load=()=>sellerApi.documents().then(items=>{apiDocs.current=Object.fromEntries(items.map(d=>[d.type,d]));setDocs(documentTemplates.map(template=>{const d=apiDocs.current[typeById[template.id]];return d?{...template,status:(d.status==='VERIFIED'?'Verified':d.status==='REJECTED'?'Rejected':d.status==='EXPIRED'?'Expired':'Pending') as DocStatus,submittedAt:d.uploadedAt.slice(0,10),expiresAt:d.expiresAt||undefined,rejectionReason:d.rejectionReason||undefined}:{...template,status:'Not Submitted',submittedAt:undefined,expiresAt:undefined,rejectionReason:undefined}}))});
   useEffect(()=>{load().catch(e=>toast.error(e instanceof Error?e.message:'Unable to load verification documents'))},[]);
   const upload=(doc:ComplianceDoc)=>{const input=document.createElement('input');input.type='file';input.accept='.pdf,.png,.jpg,.jpeg';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{await uploadSellerDocument(typeById[doc.id],file);await load();toast.success(`${doc.name} uploaded`)}catch(e){toast.error(e instanceof Error?e.message:'Upload failed')}};input.click()};
   const download=async(doc:ComplianceDoc)=>{const d=apiDocs.current[typeById[doc.id]];if(!d)return;try{await downloadSellerDocument(d.id,d.name)}catch(e){toast.error(e instanceof Error?e.message:'Download failed')}};
@@ -108,7 +107,7 @@ export default function SellerVerificationSection() {
           <div>
             <div className="font-bold text-base">{overallConfig[overallStatus].label}</div>
             <div className="text-xs opacity-80 mt-0.5">
-              {verified} of {total} required documents verified · Last updated Sep 5, 2026
+              {verified} of {total} required documents verified{docs.some(d=>d.submittedAt)?` · Last updated ${docs.filter(d=>d.submittedAt).map(d=>d.submittedAt!).sort().at(-1)}`:''}
             </div>
           </div>
         </div>
