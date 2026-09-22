@@ -9,7 +9,7 @@ interface Props {
   onNavigate: (id: string) => void;
 }
 
-const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment'];
+const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Payment Pending'];
 const PENDING_STATUSES = ['Requested', 'Under Review', 'Matched'];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
@@ -21,6 +21,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   'Picked Up':      { label: 'Picked Up',         color: 'text-teal-600 dark:text-teal-400',     bg: 'bg-teal-100 dark:bg-teal-900/30',          icon: Truck },
   Delivered:        { label: 'Delivered',         color: 'text-success',                         bg: 'bg-success/10',                            icon: CheckCircle2 },
   Payment:          { label: 'Awaiting Payment',  color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30',      icon: AlertCircle },
+  'Payment Pending': { label: 'Payment Pending',   color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30',      icon: AlertCircle },
   Completed:        { label: 'Completed',         color: 'text-success',                         bg: 'bg-success/10',                            icon: CheckCircle2 },
   Settled:          { label: 'Settled',           color: 'text-success',                         bg: 'bg-success/10',                            icon: CheckCircle2 },
   Cancelled:        { label: 'Cancelled',         color: 'text-destructive',                     bg: 'bg-destructive/10',                        icon: X },

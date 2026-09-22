@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { ArrowLeft, MapPin, Package, Award, Calendar, Truck, Shield, CheckCircle2, AlertCircle, Zap, Info } from 'lucide-react';
-import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import { buyerApi, type UCOMarketListing } from '@/lib/buyer-api';
 import Icon from '@/components/ui/AppIcon';
 import RequestConfirmationModal from './RequestConfirmationModal';
+import { toast } from 'sonner';
 
 
 interface Props {
@@ -40,6 +41,7 @@ export default function ListingDetailsSection({ listing, onBack, onRequestSucces
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [volumeError, setVolumeError] = useState('');
+  const [orderId, setOrderId] = useState('');
 
   const totalEstimate = parseInt(requestedVolume || '0') * listing.pricePerLiter;
 
@@ -53,8 +55,20 @@ export default function ListingDetailsSection({ listing, onBack, onRequestSucces
   };
 
   const handleSubmit = async () => {
-    await new Promise((r) => setTimeout(r, 1800));
-    setSubmitted(true);
+    if (!validateVolume(requestedVolume)) throw new Error('Enter a valid order volume');
+    try {
+      const profile = await buyerApi.profile();
+      const deliveryAddress = [profile.address, profile.city, profile.state, profile.pincode].filter(Boolean).join(', ');
+      if (!deliveryAddress) throw new Error('Add a delivery address to your buyer profile before ordering');
+      const orderNotes = [useCase ? `Intended use: ${useCase}` : '', notes].filter(Boolean).join('\n');
+      const created = await buyerApi.createOrder({listingId:listing.id,volumeLiters:Number(requestedVolume),deliveryAddress,notes:orderNotes||undefined});
+      setOrderId(created.id);
+      setRequestModalOpen(false);
+      setSubmitted(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to create order');
+      throw error;
+    }
   };
 
   if (submitted) {
@@ -73,6 +87,7 @@ export default function ListingDetailsSection({ listing, onBack, onRequestSucces
         <div className="card p-5 max-w-sm w-full text-left">
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Request Summary</div>
           {[
+            { label: 'Order ID', value: orderId },
             { label: 'Listing ID', value: listing.id },
             { label: 'Oil Type', value: `${listing.oilType} — Grade ${listing.gradeLabel}` },
             { label: 'Volume Requested', value: `${requestedVolume} L` },

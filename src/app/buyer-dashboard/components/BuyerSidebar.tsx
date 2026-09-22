@@ -82,7 +82,16 @@ interface Props {
 
 export default function BuyerSidebar({ collapsed, mobileOpen, onMobileClose, activeSection, onNavigate }: Props) {
   const [profile,setProfile]=useState<BuyerProfile|null>(null);
-  useEffect(()=>{buyerApi.profile().then(setProfile).catch(()=>{});},[]);
+  const [activeOrderCount,setActiveOrderCount]=useState(0);
+  useEffect(()=>{
+    Promise.all([buyerApi.profile(),buyerApi.orders()])
+      .then(([buyerProfile,orders])=>{
+        setProfile(buyerProfile);
+        const activeStatuses=['Requested','Under Review','Matched','Confirmed','Pickup Scheduled','Picked Up','Delivered','Payment','Payment Pending'];
+        setActiveOrderCount(orders.filter((order)=>activeStatuses.includes(order.status)).length);
+      })
+      .catch(()=>{});
+  },[activeSection]);
   const groups = [...new Set(navItems.map((n) => n.group))];
 
   const sidebarContent = (
@@ -120,6 +129,7 @@ export default function BuyerSidebar({ collapsed, mobileOpen, onMobileClose, act
               {items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeSection === item.id;
+                const badge = item.id === 'orders' ? activeOrderCount : item.badge;
                 return (
                   <button
                     key={`buyer-sidebar-nav-${item.id}`}
@@ -134,16 +144,16 @@ export default function BuyerSidebar({ collapsed, mobileOpen, onMobileClose, act
                     {!collapsed && (
                       <>
                         <span className="text-sm flex-1 text-left">{item.label}</span>
-                        {item.badge && (
+                        {!!badge && (
                           <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">
-                            {item.badge}
+                            {badge}
                           </span>
                         )}
                       </>
                     )}
-                    {collapsed && item.badge && (
+                    {collapsed && !!badge && (
                       <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                        {item.badge}
+                        {badge}
                       </span>
                     )}
                   </button>

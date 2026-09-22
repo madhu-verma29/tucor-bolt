@@ -9,10 +9,10 @@ import { buyerApi } from '@/lib/buyer-api';
 
 const ORDER_TIMELINE_STEPS = [
   'Requested', 'Under Review', 'Matched', 'Confirmed',
-  'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Settled', 'Completed',
+  'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Payment Pending', 'Settled', 'Completed',
 ];
 
-const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment'];
+const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Payment Pending'];
 
 function OrderStatusTimeline({ status }: { status: BuyerOrder['status'] }) {
   const terminalStatuses = ['Cancelled', 'Rejected', 'Disputed'];
@@ -59,6 +59,7 @@ const statusColors: Record<string, string> = {
   'Picked Up': 'badge-active',
   Delivered: 'badge-active',
   Payment: 'badge-pending',
+  'Payment Pending': 'badge-pending',
   Settled: 'badge-active',
   Completed: 'badge-active',
   Cancelled: 'badge-danger',

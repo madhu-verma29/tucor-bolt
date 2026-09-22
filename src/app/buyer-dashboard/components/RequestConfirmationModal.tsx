@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Shield, CheckCircle2, X, Lock, Truck, CreditCard, Clock, AlertTriangle,  } from 'lucide-react';
-import { UCOMarketListing } from '@/lib/buyer-mock-data';
+import type { UCOMarketListing } from '@/lib/buyer-api';
 
 interface Props {
   listing: UCOMarketListing;
@@ -31,6 +31,7 @@ export default function RequestConfirmationModal({
 }: Props) {
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const totalEstimate = requestedVolume * listing.pricePerLiter;
   const platformFeeEstimate = Math.round(totalEstimate * 0.02);
@@ -39,8 +40,10 @@ export default function RequestConfirmationModal({
   const handleConfirm = async () => {
     if (!agreed) return;
     setSubmitting(true);
-    await onConfirm();
-    setSubmitting(false);
+    setSubmitError('');
+    try { await onConfirm(); }
+    catch(error) { setSubmitError(error instanceof Error?error.message:'Unable to create order'); }
+    finally { setSubmitting(false); }
   };
 
   return (
@@ -160,6 +163,7 @@ export default function RequestConfirmationModal({
               I agree that TUCOR will manage this transaction end-to-end. I understand that seller details will remain confidential, and that final pricing and logistics will be confirmed by TUCOR before any commitment is made.
             </p>
           </label>
+          {submitError && <p className="text-xs text-danger flex items-center gap-1"><AlertTriangle size={11}/>{submitError}</p>}
         </div>
 
         {/* Footer actions */}

@@ -737,6 +737,8 @@ export default function BuyerListingsSection({ onViewListing }: Props) {
               listing={listing}
               viewMode={viewMode}
               onViewListing={onViewListing}
+              saved={savedIds.includes(listing.id)}
+              onToggleSaved={toggleSaved}
             />
           ))}
         </div>

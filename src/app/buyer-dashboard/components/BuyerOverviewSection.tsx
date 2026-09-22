@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Search, ShoppingCart, History, TrendingUp, Leaf, Droplets } from 'lucide-react';
-import type { BuyerOrder, UCOMarketListing } from '@/lib/buyer-mock-data';
-import { buyerApi, BuyerProfile, DashboardMetrics } from '@/lib/buyer-api';
+import { buyerApi, type BuyerOrder, type BuyerProfile, type DashboardMetrics, type UCOMarketListing } from '@/lib/buyer-api';
 import Icon from '@/components/ui/AppIcon';
 
 
@@ -11,7 +10,7 @@ interface Props {
   onNavigate: (id: string) => void;
 }
 
-const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment'];
+const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Payment Pending'];
 
 export default function BuyerOverviewSection({ onNavigate }: Props) {
   const [orders,setOrders]=useState<BuyerOrder[]>([]); const [listings,setListings]=useState<UCOMarketListing[]>([]); const [profile,setProfile]=useState<BuyerProfile|null>(null); const [metrics,setMetrics]=useState<DashboardMetrics|null>(null);

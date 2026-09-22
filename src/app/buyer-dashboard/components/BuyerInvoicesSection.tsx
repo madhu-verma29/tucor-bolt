@@ -21,7 +21,7 @@ export default function BuyerInvoicesSection() {
 
   const filtered = invoiceData.filter(
     (inv) =>
-      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
+      (inv.invoiceNumber?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
       inv.orderId.toLowerCase().includes(search.toLowerCase())
   );
 

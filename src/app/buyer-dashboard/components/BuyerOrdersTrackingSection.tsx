@@ -16,12 +16,13 @@ const ORDER_TIMELINE_STEPS: { key: BuyerOrder['status']; label: string; descript
   { key: 'Picked Up', label: 'Picked Up', description: 'UCO collected from seller' },
   { key: 'Delivered', label: 'Delivered', description: 'Delivered to your facility' },
   { key: 'Payment', label: 'Payment', description: 'Payment processing in progress' },
+  { key: 'Payment Pending', label: 'Payment Pending', description: 'Payment is awaiting completion' },
   { key: 'Settled', label: 'Settled', description: 'Payment settled successfully' },
   { key: 'Completed', label: 'Completed', description: 'Order fully completed' },
 ];
 
 const TERMINAL_STATUSES = ['Cancelled', 'Rejected', 'Disputed'];
-const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment'];
+const ACTIVE_STATUSES = ['Requested', 'Under Review', 'Matched', 'Confirmed', 'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Payment Pending'];
 
 const statusColors: Record<string, string> = {
   Requested: 'badge-muted',
@@ -32,6 +33,7 @@ const statusColors: Record<string, string> = {
   'Picked Up': 'badge-active',
   Delivered: 'badge-active',
   Payment: 'badge-pending',
+  'Payment Pending': 'badge-pending',
   Settled: 'badge-active',
   Completed: 'badge-active',
   Cancelled: 'badge-danger',
