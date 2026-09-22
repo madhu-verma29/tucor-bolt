@@ -1,30 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Eye, Package, Truck, CheckCircle, Clock, XCircle, AlertTriangle } from 'lucide-react';
-
-interface AdminOrder {
-  id: string;
-  seller: string;
-  buyer: string;
-  oilType: string;
-  volumeLiters: number;
-  totalAmount: number;
-  status: 'Requested' | 'Under Review' | 'Matched' | 'Confirmed' | 'Pickup Scheduled' | 'Picked Up' | 'Delivered' | 'Payment' | 'Settled' | 'Completed' | 'Cancelled' | 'Rejected' | 'Disputed';
-  createdAt: string;
-  updatedAt: string;
-  location: string;
-}
-
-const mockAdminOrders: AdminOrder[] = [
-  { id: 'ORD-2026-0201', seller: 'Spice Route Kitchens', buyer: 'BioFuel India Ltd.', oilType: 'Palm', volumeLiters: 480, totalAmount: 13440, status: 'Confirmed', createdAt: '2026-09-08', updatedAt: '2026-09-09', location: 'Mumbai → Pune' },
-  { id: 'ORD-2026-0200', seller: 'Hotel Grand Palace', buyer: 'EcoRecycle Corp', oilType: 'Sunflower', volumeLiters: 310, totalAmount: 9300, status: 'Pickup Scheduled', createdAt: '2026-09-07', updatedAt: '2026-09-10', location: 'Delhi → Gurugram' },
-  { id: 'ORD-2026-0199', seller: 'Cafe Bliss', buyer: 'Biodiesel Corp', oilType: 'Blended', volumeLiters: 180, totalAmount: 4680, status: 'Under Review', createdAt: '2026-09-09', updatedAt: '2026-09-09', location: 'Mumbai → Pune' },
-  { id: 'ORD-2026-0198', seller: 'Sunrise Restaurants', buyer: 'Green Energy Solutions', oilType: 'Mustard', volumeLiters: 240, totalAmount: 7200, status: 'Disputed', createdAt: '2026-09-01', updatedAt: '2026-09-08', location: 'Delhi → Gurugram' },
-  { id: 'ORD-2026-0197', seller: 'Spice Route Kitchens', buyer: 'RecycleTech Industries', oilType: 'Palm', volumeLiters: 420, totalAmount: 11760, status: 'Completed', createdAt: '2026-08-28', updatedAt: '2026-09-05', location: 'Mumbai → Ahmedabad' },
-  { id: 'ORD-2026-0196', seller: 'Hotel Grand Palace', buyer: 'BioFuel India Ltd.', oilType: 'Sunflower', volumeLiters: 600, totalAmount: 18000, status: 'Settled', createdAt: '2026-08-25', updatedAt: '2026-09-03', location: 'Delhi → Pune' },
-  { id: 'ORD-2026-0195', seller: 'CloudKitchen Co.', buyer: 'Biodiesel Corp', oilType: 'Soybean', volumeLiters: 290, totalAmount: 8120, status: 'Cancelled', createdAt: '2026-09-06', updatedAt: '2026-09-07', location: 'Bengaluru → Pune' },
-];
+import { adminApi, type AdminOrder } from '@/lib/admin-api';
+import { toast } from 'sonner';
 
 const statusConfig: Record<string, { color: string; icon: React.ElementType }> = {
   'Requested': { color: 'bg-muted text-muted-foreground border-border', icon: Clock },
@@ -35,6 +14,7 @@ const statusConfig: Record<string, { color: string; icon: React.ElementType }> =
   'Picked Up': { color: 'bg-teal-500/15 text-teal-600 border-teal-500/30', icon: Truck },
   'Delivered': { color: 'bg-green-500/15 text-green-600 border-green-500/30', icon: Package },
   'Payment': { color: 'bg-amber-500/15 text-amber-600 border-amber-500/30', icon: Clock },
+  'Payment Pending': { color: 'bg-amber-500/15 text-amber-600 border-amber-500/30', icon: Clock },
   'Settled': { color: 'bg-green-500/15 text-green-600 border-green-500/30', icon: CheckCircle },
   'Completed': { color: 'bg-green-500/15 text-green-600 border-green-500/30', icon: CheckCircle },
   'Cancelled': { color: 'bg-muted text-muted-foreground border-border', icon: XCircle },
@@ -44,15 +24,17 @@ const statusConfig: Record<string, { color: string; icon: React.ElementType }> =
 
 const orderJourneySteps = [
   'Requested', 'Under Review', 'Matched', 'Confirmed',
-  'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Settled', 'Completed'
+  'Pickup Scheduled', 'Picked Up', 'Delivered', 'Payment', 'Payment Pending', 'Settled', 'Completed'
 ];
 
 export default function AdminOrdersSection() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selected, setSelected] = useState<AdminOrder | null>(null);
+  const [adminOrders,setAdminOrders]=useState<AdminOrder[]>([]);
+  useEffect(()=>{adminApi.orders().then(setAdminOrders).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load orders'));},[]);
 
-  const filtered = mockAdminOrders.filter((o) => {
+  const filtered = adminOrders.filter((o) => {
     const matchSearch = o.id.toLowerCase().includes(search.toLowerCase()) || o.seller.toLowerCase().includes(search.toLowerCase()) || o.buyer.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || o.status === filterStatus;
     return matchSearch && matchStatus;
@@ -65,11 +47,11 @@ export default function AdminOrdersSection() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Order Monitoring</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{mockAdminOrders.length} total orders · {mockAdminOrders.filter((o) => o.status === 'Disputed').length} disputed</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{adminOrders.length} total orders · {adminOrders.filter((o) => o.status === 'Disputed').length} disputed</p>
         </div>
         <div className="flex items-center gap-3 text-xs">
           {['Under Review', 'Disputed'].map((s) => {
-            const count = mockAdminOrders.filter((o) => o.status === s).length;
+            const count = adminOrders.filter((o) => o.status === s).length;
             return count > 0 ? (
               <div key={s} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border font-semibold ${statusConfig[s]?.color}`}>
                 {s}: {count}

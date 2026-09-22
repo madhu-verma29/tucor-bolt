@@ -1,33 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Truck, Search, CheckCircle2, Clock, MapPin, User, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { adminApi, type AdminPickup } from '@/lib/admin-api';
 
-
-interface AdminPickup {
-  id: string;
-  orderId: string;
-  oilType: string;
-  volumeLiters: number;
-  scheduledDate: string;
-  status: 'Pending' | 'Scheduled' | 'Assigned' | 'In Transit' | 'Completed';
-  agentName: string;
-  vehicleNumber: string;
-  sellerCity: string;
-  sellerRef: string;
-  buyerRef: string;
-}
-
-const mockAdminPickups: AdminPickup[] = [
-  { id: 'PKP-2026-0094', orderId: 'ORD-2026-0187', oilType: 'Sunflower', volumeLiters: 310, scheduledDate: '2026-09-12', status: 'Scheduled', agentName: 'Rajan Mehta', vehicleNumber: 'MH-04-CX-7721', sellerCity: 'Mumbai', sellerRef: 'SEL-****-0038', buyerRef: 'BYR-****-7821' },
-  { id: 'PKP-2026-0089', orderId: 'ORD-2026-0162', oilType: 'Palm', volumeLiters: 240, scheduledDate: '2026-09-15', status: 'Assigned', agentName: 'Suresh Pillai', vehicleNumber: 'MH-01-BK-4490', sellerCity: 'Mumbai', sellerRef: 'SEL-****-0041', buyerRef: 'BYR-****-9015' },
-  { id: 'PKP-2026-0082', orderId: 'ORD-2026-0201', oilType: 'Soybean', volumeLiters: 390, scheduledDate: '2026-09-16', status: 'Pending', agentName: 'Unassigned', vehicleNumber: '—', sellerCity: 'Hyderabad', sellerRef: 'SEL-****-0021', buyerRef: 'BYR-****-4201' },
-  { id: 'PKP-2026-0078', orderId: 'ORD-2026-0195', oilType: 'Mustard', volumeLiters: 220, scheduledDate: '2026-09-10', status: 'In Transit', agentName: 'Vikram Nair', vehicleNumber: 'KA-05-MN-3390', sellerCity: 'Delhi', sellerRef: 'SEL-****-0033', buyerRef: 'BYR-****-3307' },
-  { id: 'PKP-2026-0071', orderId: 'ORD-2026-0174', oilType: 'Blended', volumeLiters: 650, scheduledDate: '2026-08-20', status: 'Completed', agentName: 'Anil Sharma', vehicleNumber: 'MH-02-GH-3312', sellerCity: 'Mumbai', sellerRef: 'SEL-****-0029', buyerRef: 'BYR-****-4432' },
-  { id: 'PKP-2026-0065', orderId: 'ORD-2026-0188', oilType: 'Palm', volumeLiters: 820, scheduledDate: '2026-09-25', status: 'Pending', agentName: 'Unassigned', vehicleNumber: '—', sellerCity: 'Kolkata', sellerRef: 'SEL-****-0015', buyerRef: 'BYR-****-8812' },
-];
 
 const statusConfig = {
   Pending: { className: 'badge-pending', icon: Clock, color: 'text-warning' },
@@ -42,8 +20,11 @@ type FilterStatus = 'all' | AdminPickup['status'];
 export default function AdminPickupsSection() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterStatus>('all');
+  const [adminPickups,setAdminPickups]=useState<AdminPickup[]>([]);
+  useEffect(()=>{adminApi.pickups().then(setAdminPickups).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load pickups'));},[]);
+  const updatePickup=async(id:string,action:'assign'|'complete')=>{try{const updated=await adminApi.pickupAction(id,action);setAdminPickups(items=>items.map(p=>p.id===id?updated:p));toast.success(action==='assign'?`Agent assigned to ${id}`:`${id} marked as completed`);}catch(e){toast.error(e instanceof Error?e.message:'Unable to update pickup');}};
 
-  const filtered = mockAdminPickups.filter((p) => {
+  const filtered = adminPickups.filter((p) => {
     const matchSearch = p.id.toLowerCase().includes(search.toLowerCase()) || p.orderId.toLowerCase().includes(search.toLowerCase()) || p.agentName.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === 'all' || p.status === filter;
     return matchSearch && matchFilter;
@@ -59,10 +40,10 @@ export default function AdminPickupsSection() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Pickups', value: mockAdminPickups.length, color: 'text-foreground', bg: 'bg-muted', icon: Package },
-          { label: 'Pending Assignment', value: mockAdminPickups.filter((p) => p.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
-          { label: 'In Progress', value: mockAdminPickups.filter((p) => ['Scheduled', 'Assigned', 'In Transit'].includes(p.status)).length, color: 'text-info', bg: 'bg-info-bg', icon: Truck },
-          { label: 'Completed', value: mockAdminPickups.filter((p) => p.status === 'Completed').length, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
+          { label: 'Total Pickups', value: adminPickups.length, color: 'text-foreground', bg: 'bg-muted', icon: Package },
+          { label: 'Pending Assignment', value: adminPickups.filter((p) => p.status === 'Pending').length, color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
+          { label: 'In Progress', value: adminPickups.filter((p) => ['Scheduled', 'Assigned', 'In Transit'].includes(p.status)).length, color: 'text-info', bg: 'bg-info-bg', icon: Truck },
+          { label: 'Completed', value: adminPickups.filter((p) => p.status === 'Completed').length, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -148,7 +129,7 @@ export default function AdminPickupsSection() {
                 <div className="flex items-center gap-2">
                   {pickup.status === 'Pending' && (
                     <button
-                      onClick={() => toast.success(`Agent assigned to ${pickup.id}`)}
+                      onClick={() => updatePickup(pickup.id,'assign')}
                       className="btn-primary py-1.5 text-xs gap-1.5"
                     >
                       <User size={12} />
@@ -157,7 +138,7 @@ export default function AdminPickupsSection() {
                   )}
                   {pickup.status === 'In Transit' && (
                     <button
-                      onClick={() => toast.success(`${pickup.id} marked as completed`)}
+                      onClick={() => updatePickup(pickup.id,'complete')}
                       className="btn-secondary py-1.5 text-xs gap-1.5"
                     >
                       <CheckCircle2 size={12} />

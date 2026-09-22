@@ -1,46 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Download, Building2, Droplets, Leaf, DollarSign, Calendar } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { adminApi, type AdminReports } from '@/lib/admin-api';
 
-
-const platformVolumeData = [
-  { month: 'Apr', collected: 18400, sourced: 15200 },
-  { month: 'May', collected: 22100, sourced: 19800 },
-  { month: 'Jun', collected: 19800, sourced: 17400 },
-  { month: 'Jul', collected: 26500, sourced: 23100 },
-  { month: 'Aug', collected: 31200, sourced: 28400 },
-  { month: 'Sep', collected: 28900, sourced: 25600 },
-];
-
-const revenueData = [
-  { month: 'Apr', revenue: 284000, fees: 14200 },
-  { month: 'May', revenue: 341000, fees: 17050 },
-  { month: 'Jun', revenue: 298000, fees: 14900 },
-  { month: 'Jul', revenue: 412000, fees: 20600 },
-  { month: 'Aug', revenue: 489000, fees: 24450 },
-  { month: 'Sep', revenue: 451000, fees: 22550 },
-];
-
-const userGrowthData = [
-  { month: 'Apr', sellers: 180, buyers: 62 },
-  { month: 'May', sellers: 210, buyers: 74 },
-  { month: 'Jun', sellers: 238, buyers: 89 },
-  { month: 'Jul', sellers: 271, buyers: 103 },
-  { month: 'Aug', sellers: 304, buyers: 118 },
-  { month: 'Sep', sellers: 342, buyers: 134 },
-];
-
-const oilTypeData = [
-  { name: 'Palm', value: 38400, color: '#22c55e' },
-  { name: 'Sunflower', value: 29100, color: '#3b82f6' },
-  { name: 'Mustard', value: 18700, color: '#f59e0b' },
-  { name: 'Blended', value: 24300, color: '#8b5cf6' },
-  { name: 'Soybean', value: 16400, color: '#06b6d4' },
-];
 
 const reportTypes = [
   { id: 'platform', label: 'Platform Performance Report', desc: 'UCO recovery, order volumes, and business metrics', icon: '📊', period: 'Aug 2026' },
@@ -52,8 +18,11 @@ const reportTypes = [
 
 export default function AdminReportsSection() {
   const [period, setPeriod] = useState<'3m' | '6m'>('6m');
-  const volumeData = period === '3m' ? platformVolumeData.slice(-3) : platformVolumeData;
-  const revData = period === '3m' ? revenueData.slice(-3) : revenueData;
+  const [reports,setReports]=useState<AdminReports|null>(null);
+  useEffect(()=>{adminApi.reports().then(setReports).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load reports'));},[]);
+  const allVolume=reports?.platformVolume??[];const allRevenue=reports?.revenue??[];const userData=reports?.userGrowth??[];const oilData=reports?.oilTypes??[];
+  const volumeData = period === '3m' ? allVolume.slice(-3) : allVolume;
+  const revData = period === '3m' ? allRevenue.slice(-3) : allRevenue;
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,10 +49,10 @@ export default function AdminReportsSection() {
       {/* KPI summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total UCO Recovered', value: '1,46,900L', sub: 'All time', color: 'text-info', bg: 'bg-info-bg', icon: Droplets },
-          { label: 'Platform Revenue', value: '₹27.5L', sub: 'This month', color: 'text-success', bg: 'bg-success-bg', icon: DollarSign },
-          { label: 'Active Businesses', value: '342', sub: 'Verified', color: 'text-primary', bg: 'bg-primary/10', icon: Building2 },
-          { label: 'CO₂ Offset', value: '88.1T', sub: 'Estimated', color: 'text-primary', bg: 'bg-primary/10', icon: Leaf },
+          { label: 'Total UCO Recovered', value: `${(reports?.summary.totalUcoRecovered??0).toLocaleString('en-IN')}L`, sub: 'All time', color: 'text-info', bg: 'bg-info-bg', icon: Droplets },
+          { label: 'Platform Revenue', value: `₹${(reports?.summary.platformRevenue??0).toLocaleString('en-IN')}`, sub: 'Settled fees', color: 'text-success', bg: 'bg-success-bg', icon: DollarSign },
+          { label: 'Active Businesses', value: String(reports?.summary.activeBusinesses??0), sub: 'Verified', color: 'text-primary', bg: 'bg-primary/10', icon: Building2 },
+          { label: 'CO₂ Offset', value: `${((reports?.summary.co2OffsetKg??0)/1000).toFixed(1)}T`, sub: 'Estimated', color: 'text-primary', bg: 'bg-primary/10', icon: Leaf },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -142,7 +111,7 @@ export default function AdminReportsSection() {
         <div className="card p-5">
           <h3 className="font-bold text-foreground text-sm mb-4">User Growth — Sellers vs Buyers</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={userGrowthData}>
+            <BarChart data={userData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
@@ -158,8 +127,8 @@ export default function AdminReportsSection() {
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={200}>
               <PieChart>
-                <Pie data={oilTypeData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" paddingAngle={3}>
-                  {oilTypeData.map((entry, index) => (
+                <Pie data={oilData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" paddingAngle={3}>
+                  {oilData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -167,7 +136,7 @@ export default function AdminReportsSection() {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-col gap-2 flex-1">
-              {oilTypeData.map((item) => (
+              {oilData.map((item) => (
                 <div key={`oil-legend-${item.name}`} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
@@ -202,7 +171,7 @@ export default function AdminReportsSection() {
                   {report.period}
                 </div>
                 <button
-                  onClick={() => toast.success(`Generating ${report.label}...`)}
+                  onClick={() => adminApi.downloadReport(report.id).then(()=>toast.success(`${report.label} downloaded`)).catch(e=>toast.error(e instanceof Error?e.message:'Report download failed'))}
                   className="btn-secondary py-1.5 text-xs gap-1.5"
                 >
                   <Download size={12} />

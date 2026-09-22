@@ -31,3 +31,6 @@ tucor:
   web-url: ${WEB_URL:http://localhost:4028}
   mail:
     from: ${MAIL_FROM:no-reply@tucor.local}
+  admin:
+    bootstrap-email: ${ADMIN_BOOTSTRAP_EMAIL:admin@tucor.in}
+    bootstrap-password: ${ADMIN_BOOTSTRAP_PASSWORD:}

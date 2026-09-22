@@ -1,33 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, CheckCircle, XCircle, Eye, Building2 } from 'lucide-react';
+import { adminApi, type AdminBusiness as Business } from '@/lib/admin-api';
+import { toast } from 'sonner';
 
-interface Business {
-  id: string;
-  name: string;
-  type: 'Seller' | 'Buyer';
-  category: string;
-  owner: string;
-  email: string;
-  location: string;
-  status: 'Approved' | 'Pending' | 'Rejected' | 'Suspended';
-  gst: string;
-  fssai?: string;
-  submittedAt: string;
-  approvedAt?: string;
-  monthlyVolume: string;
-}
-
-const mockBusinesses: Business[] = [
-  { id: 'BIZ-001', name: 'Spice Route Kitchens', type: 'Seller', category: 'Cloud Kitchen', owner: 'Priya Nambiar', email: 'priya@spiceroute.in', location: 'Andheri West, Mumbai', status: 'Approved', gst: '27AABCS1234A1Z5', fssai: '10020042012345', submittedAt: '2026-03-10', approvedAt: '2026-03-12', monthlyVolume: '480 L' },
-  { id: 'BIZ-002', name: 'BioFuel India Ltd.', type: 'Buyer', category: 'Biodiesel Manufacturer', owner: 'Arjun Mehta', email: 'arjun@biofuelindia.com', location: 'Pune, Maharashtra', status: 'Approved', gst: '27AABCB5678B1Z3', submittedAt: '2026-02-05', approvedAt: '2026-02-08', monthlyVolume: '12,000 L' },
-  { id: 'BIZ-003', name: 'CloudKitchen Co.', type: 'Seller', category: 'Cloud Kitchen', owner: 'Kavitha Reddy', email: 'kavitha@cloudkitchen.co', location: 'Koramangala, Bengaluru', status: 'Pending', gst: '29AABCC9012C1Z1', fssai: '10020042067890', submittedAt: '2026-09-05', monthlyVolume: '320 L' },
-  { id: 'BIZ-004', name: 'Green Energy Solutions', type: 'Buyer', category: 'Recycler', owner: 'Rahul Sharma', email: 'rahul@greenenergy.in', location: 'Gurugram, Haryana', status: 'Pending', gst: '06AABCG3456D1Z9', submittedAt: '2026-09-07', monthlyVolume: '8,000 L' },
-  { id: 'BIZ-005', name: 'Hotel Grand Palace', type: 'Seller', category: 'Hotel', owner: 'Deepa Krishnan', email: 'deepa@hotelgrand.com', location: 'Connaught Place, Delhi', status: 'Approved', gst: '07AABCH7890E1Z7', fssai: '10020042023456', submittedAt: '2026-04-18', approvedAt: '2026-04-20', monthlyVolume: '750 L' },
-  { id: 'BIZ-006', name: 'RecycleTech Industries', type: 'Buyer', category: 'Aggregator', owner: 'Vikram Patel', email: 'vikram@recycletech.in', location: 'Ahmedabad, Gujarat', status: 'Suspended', gst: '24AABCR1234F1Z5', submittedAt: '2026-01-12', approvedAt: '2026-01-15', monthlyVolume: '5,000 L' },
-  { id: 'BIZ-007', name: 'Cafe Bliss', type: 'Seller', category: 'Cafe', owner: 'Ananya Singh', email: 'ananya@cafebliss.com', location: 'Bandra, Mumbai', status: 'Pending', gst: '27AABCC5678G1Z3', fssai: '10020042089012', submittedAt: '2026-09-08', monthlyVolume: '180 L' },
-];
 
 const statusColors: Record<string, string> = {
   Approved: 'bg-green-500/15 text-green-600 border-green-500/30',
@@ -41,7 +18,8 @@ export default function AdminBusinessesSection() {
   const [filterType, setFilterType] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selected, setSelected] = useState<Business | null>(null);
-  const [businesses, setBusinesses] = useState<Business[]>(mockBusinesses);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  useEffect(()=>{adminApi.businesses().then(setBusinesses).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load businesses'));},[]);
 
   const filtered = businesses.filter((b) => {
     const matchSearch = b.name.toLowerCase().includes(search.toLowerCase()) || b.owner.toLowerCase().includes(search.toLowerCase()) || b.location.toLowerCase().includes(search.toLowerCase());
@@ -50,15 +28,12 @@ export default function AdminBusinessesSection() {
     return matchSearch && matchType && matchStatus;
   });
 
-  const handleApprove = (id: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    setBusinesses((prev) => prev.map((b) => b.id === id ? { ...b, status: 'Approved', approvedAt: today } : b));
-    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status: 'Approved', approvedAt: today } : null);
+  const handleApprove = async (id: string) => {
+    try{const updated=await adminApi.businessAction(id,'approve');setBusinesses(prev=>prev.map(b=>b.id===id?updated:b));if(selected?.id===id)setSelected(updated);toast.success('Business approved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to approve business');}
   };
 
-  const handleReject = (id: string) => {
-    setBusinesses((prev) => prev.map((b) => b.id === id ? { ...b, status: 'Rejected' } : b));
-    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status: 'Rejected' } : null);
+  const handleReject = async (id: string) => {
+    try{const updated=await adminApi.businessAction(id,'reject');setBusinesses(prev=>prev.map(b=>b.id===id?updated:b));if(selected?.id===id)setSelected(updated);toast.success('Business rejected');}catch(e){toast.error(e instanceof Error?e.message:'Unable to reject business');}
   };
 
   const pendingCount = businesses.filter((b) => b.status === 'Pending').length;

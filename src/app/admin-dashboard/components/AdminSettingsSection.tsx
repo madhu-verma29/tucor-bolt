@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Bell, Shield, User, Eye, EyeOff, Save, Smartphone, Mail, AlertTriangle, Database, Globe, Lock, Users, CheckCircle2, Undo2, X, AlertCircle } from 'lucide-react';
+import { adminApi, type AdminAccess, type AdminNotificationSettings, type AdminPlatformSettings } from '@/lib/admin-api';
 
 type Tab = 'platform' | 'notifications' | 'security' | 'access';
 
@@ -111,6 +112,9 @@ export default function AdminSettingsSection() {
 
   const [passwordFields, setPasswordFields] = useState({ current: '', newPwd: '', confirm: '' });
   const [passwordError, setPasswordError] = useState('');
+  const [adminUsers,setAdminUsers]=useState<AdminAccess[]>([]);
+
+  useEffect(()=>{Promise.all([adminApi.settings(),adminApi.admins()]).then(([s,a])=>{setPlatformSettings(s.platform);setSavedPlatformSettings(s.platform);setNotifSettings(s.notifications);setSavedNotifSettings(s.notifications);setAdminUsers(a)}).catch(e=>addToast({type:'error',message:e instanceof Error?e.message:'Unable to load settings'}));},[]);
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'platform', label: 'Platform', icon: Globe },
@@ -134,17 +138,19 @@ export default function AdminSettingsSection() {
     setSaveState((prev) => ({ ...prev, [key]: state }));
   };
 
-  const executePlatformSave = () => {
+  const executePlatformSave = async () => {
     setSectionSaveState('platform', { status: 'saving' });
     const prevSettings = { ...savedPlatformSettings };
-    setTimeout(() => {
-      setSavedPlatformSettings({ ...platformSettings });
+    try {
+      const saved=await adminApi.updatePlatform(platformSettings as AdminPlatformSettings);
+      setPlatformSettings(saved);setSavedPlatformSettings(saved);
       setPlatformDirty(false);
       setSectionSaveState('platform', { status: 'saved' });
       addToast({
         type: 'success',
         message: 'Platform configuration saved.',
         undoAction: () => {
+          adminApi.updatePlatform(prevSettings as AdminPlatformSettings).catch(()=>{});
           setPlatformSettings(prevSettings);
           setSavedPlatformSettings(prevSettings);
           setPlatformDirty(false);
@@ -153,7 +159,7 @@ export default function AdminSettingsSection() {
         },
       });
       setTimeout(() => setSectionSaveState('platform', { status: 'idle' }), 3000);
-    }, 700);
+    } catch(e){setSectionSaveState('platform',{status:'error'});addToast({type:'error',message:e instanceof Error?e.message:'Unable to save platform settings'});}
   };
 
   const handlePlatformSave = () => {
@@ -166,16 +172,18 @@ export default function AdminSettingsSection() {
     addToast({ type: 'info', message: 'Platform changes discarded.' });
   };
 
-  const handleNotifSave = () => {
+  const handleNotifSave = async () => {
     setSectionSaveState('notif', { status: 'saving' });
     const prevNotif = { ...savedNotifSettings };
-    setTimeout(() => {
-      setSavedNotifSettings({ ...notifSettings });
+    try {
+      const saved=await adminApi.updateNotifications(notifSettings as AdminNotificationSettings);
+      setNotifSettings(saved);setSavedNotifSettings(saved);
       setSectionSaveState('notif', { status: 'saved' });
       addToast({
         type: 'success',
         message: 'Notification preferences saved.',
         undoAction: () => {
+          adminApi.updateNotifications(prevNotif as AdminNotificationSettings).catch(()=>{});
           setNotifSettings(prevNotif);
           setSavedNotifSettings(prevNotif);
           setSectionSaveState('notif', { status: 'idle' });
@@ -183,22 +191,24 @@ export default function AdminSettingsSection() {
         },
       });
       setTimeout(() => setSectionSaveState('notif', { status: 'idle' }), 3000);
-    }, 600);
+    }catch(e){setSectionSaveState('notif',{status:'error'});addToast({type:'error',message:e instanceof Error?e.message:'Unable to save notification settings'});}
   };
 
-  const handlePasswordUpdate = () => {
+  const handlePasswordUpdate = async () => {
     setPasswordError('');
     if (!passwordFields.current) { setPasswordError('Current password is required.'); return; }
     if (passwordFields.newPwd.length < 8) { setPasswordError('New password must be at least 8 characters.'); return; }
     if (passwordFields.newPwd !== passwordFields.confirm) { setPasswordError('Passwords do not match.'); return; }
     setSectionSaveState('password', { status: 'saving' });
-    setTimeout(() => {
+    try{await adminApi.changePassword(passwordFields.current,passwordFields.newPwd);
       setPasswordFields({ current: '', newPwd: '', confirm: '' });
       setSectionSaveState('password', { status: 'saved' });
       addToast({ type: 'success', message: 'Admin password updated successfully.' });
       setTimeout(() => setSectionSaveState('password', { status: 'idle' }), 3000);
-    }, 700);
+    }catch(e){setSectionSaveState('password',{status:'error'});setPasswordError(e instanceof Error?e.message:'Unable to update password');}
   };
+
+  const inviteAdmin=async()=>{const email=window.prompt('Enter the new admin email address');if(!email)return;const name=window.prompt('Enter the admin name')||email.split('@')[0];try{const result=await adminApi.inviteAdmin(email,name);const admins=await adminApi.admins();setAdminUsers(admins);addToast({type:'success',message:`Admin invited. Temporary password: ${result.temporaryPassword}`});}catch(e){addToast({type:'error',message:e instanceof Error?e.message:'Unable to invite admin'});}};
 
   const SaveButton = ({ sectionKey, label, onClick, icon: BtnIcon }: { sectionKey: string; label: string; onClick: () => void; icon: React.ElementType }) => {
     const state = saveState[sectionKey];
@@ -456,7 +466,7 @@ export default function AdminSettingsSection() {
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-foreground text-base">Admin Users</h3>
             <button
-              onClick={() => addToast({ type: 'info', message: 'Invite link sent to admin email.' })}
+              onClick={inviteAdmin}
               className="btn-primary py-2 text-xs gap-1.5"
             >
               <User size={13} />
@@ -464,11 +474,7 @@ export default function AdminSettingsSection() {
             </button>
           </div>
           <div className="flex flex-col gap-3">
-            {[
-              { name: 'Admin User', email: 'admin@tucor.in', role: 'Super Admin', status: 'Active', avatar: 'A' },
-              { name: 'Rahul Verma', email: 'rahul@tucor.in', role: 'Operations Admin', status: 'Active', avatar: 'R' },
-              { name: 'Sneha Kapoor', email: 'sneha@tucor.in', role: 'Finance Admin', status: 'Active', avatar: 'S' },
-            ].map((admin) => (
+            {adminUsers.map((admin) => (
               <div key={`admin-user-${admin.email}`} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50">
                 <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 font-bold text-sm flex-shrink-0">
                   {admin.avatar}

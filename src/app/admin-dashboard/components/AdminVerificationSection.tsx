@@ -1,74 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, CheckCircle, XCircle, Clock, FileText, ShieldCheck, AlertCircle } from 'lucide-react';
-
-interface VerificationRequest {
-  id: string;
-  businessName: string;
-  type: 'Seller' | 'Buyer';
-  owner: string;
-  submittedAt: string;
-  status: 'Pending' | 'Under Review' | 'Approved' | 'Rejected' | 'More Info Required';
-  documents: { name: string; status: 'Submitted' | 'Verified' | 'Rejected' | 'Missing' }[];
-  notes?: string;
-  priority: 'High' | 'Normal' | 'Low';
-}
-
-const mockVerifications: VerificationRequest[] = [
-  {
-    id: 'VRF-2026-0041', businessName: 'CloudKitchen Co.', type: 'Seller', owner: 'Kavitha Reddy',
-    submittedAt: '2026-09-05', status: 'Pending', priority: 'High',
-    documents: [
-      { name: 'GST Certificate', status: 'Submitted' },
-      { name: 'FSSAI License', status: 'Submitted' },
-      { name: 'Address Proof', status: 'Submitted' },
-      { name: 'Bank Details', status: 'Submitted' },
-    ],
-  },
-  {
-    id: 'VRF-2026-0040', businessName: 'Green Energy Solutions', type: 'Buyer', owner: 'Rahul Sharma',
-    submittedAt: '2026-09-07', status: 'Under Review', priority: 'High',
-    documents: [
-      { name: 'GST Certificate', status: 'Verified' },
-      { name: 'Company Registration', status: 'Submitted' },
-      { name: 'Pollution Control Certificate', status: 'Missing' },
-      { name: 'Bank Details', status: 'Submitted' },
-    ],
-    notes: 'Pollution control certificate required for buyer verification',
-  },
-  {
-    id: 'VRF-2026-0039', businessName: 'Cafe Bliss', type: 'Seller', owner: 'Ananya Singh',
-    submittedAt: '2026-09-08', status: 'Pending', priority: 'Normal',
-    documents: [
-      { name: 'GST Certificate', status: 'Submitted' },
-      { name: 'FSSAI License', status: 'Submitted' },
-      { name: 'Address Proof', status: 'Missing' },
-      { name: 'Bank Details', status: 'Submitted' },
-    ],
-  },
-  {
-    id: 'VRF-2026-0038', businessName: 'Sunrise Restaurants', type: 'Seller', owner: 'Mohan Das',
-    submittedAt: '2026-09-04', status: 'More Info Required', priority: 'Normal',
-    documents: [
-      { name: 'GST Certificate', status: 'Verified' },
-      { name: 'FSSAI License', status: 'Rejected' },
-      { name: 'Address Proof', status: 'Verified' },
-      { name: 'Bank Details', status: 'Verified' },
-    ],
-    notes: 'FSSAI license appears expired. Request renewal document.',
-  },
-  {
-    id: 'VRF-2026-0037', businessName: 'EcoRecycle Corp', type: 'Buyer', owner: 'Preethi Nair',
-    submittedAt: '2026-09-03', status: 'Approved', priority: 'Low',
-    documents: [
-      { name: 'GST Certificate', status: 'Verified' },
-      { name: 'Company Registration', status: 'Verified' },
-      { name: 'Pollution Control Certificate', status: 'Verified' },
-      { name: 'Bank Details', status: 'Verified' },
-    ],
-  },
-];
+import { adminApi, type AdminVerification } from '@/lib/admin-api';
+import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
   'Pending': 'bg-amber-500/15 text-amber-600 border-amber-500/30',
@@ -94,8 +29,9 @@ const priorityColors: Record<string, string> = {
 export default function AdminVerificationSection() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [selected, setSelected] = useState<VerificationRequest | null>(null);
-  const [verifications, setVerifications] = useState<VerificationRequest[]>(mockVerifications);
+  const [selected, setSelected] = useState<AdminVerification | null>(null);
+  const [verifications, setVerifications] = useState<AdminVerification[]>([]);
+  useEffect(()=>{adminApi.verifications().then(setVerifications).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load verifications'));},[]);
 
   const filtered = verifications.filter((v) => {
     const matchSearch = v.businessName.toLowerCase().includes(search.toLowerCase()) || v.owner.toLowerCase().includes(search.toLowerCase());
@@ -103,19 +39,16 @@ export default function AdminVerificationSection() {
     return matchSearch && matchStatus;
   });
 
-  const handleApprove = (id: string) => {
-    setVerifications((prev) => prev.map((v) => v.id === id ? { ...v, status: 'Approved' as const } : v));
-    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status: 'Approved' as const } : null);
+  const handleApprove = async (id: string) => {
+    try{const updated=await adminApi.verificationAction(id,'approve');setVerifications(prev=>prev.map(v=>v.id===id?updated:v));if(selected?.id===id)setSelected(updated);toast.success('Verification approved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to approve verification');}
   };
 
-  const handleReject = (id: string) => {
-    setVerifications((prev) => prev.map((v) => v.id === id ? { ...v, status: 'Rejected' as const } : v));
-    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status: 'Rejected' as const } : null);
+  const handleReject = async (id: string) => {
+    try{const updated=await adminApi.verificationAction(id,'reject','Rejected by administrator');setVerifications(prev=>prev.map(v=>v.id===id?updated:v));if(selected?.id===id)setSelected(updated);toast.success('Verification rejected');}catch(e){toast.error(e instanceof Error?e.message:'Unable to reject verification');}
   };
 
-  const handleReview = (id: string) => {
-    setVerifications((prev) => prev.map((v) => v.id === id ? { ...v, status: 'Under Review' as const } : v));
-    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status: 'Under Review' as const } : null);
+  const handleReview = async (id: string) => {
+    try{const updated=await adminApi.verificationAction(id,'review');setVerifications(prev=>prev.map(v=>v.id===id?updated:v));if(selected?.id===id)setSelected(updated);toast.success('Review started');}catch(e){toast.error(e instanceof Error?e.message:'Unable to start review');}
   };
 
   const pendingCount = verifications.filter((v) => v.status === 'Pending' || v.status === 'Under Review').length;

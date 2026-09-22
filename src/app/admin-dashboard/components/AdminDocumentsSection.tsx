@@ -1,74 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, CheckCircle, XCircle, Clock, FileText, AlertCircle, Download, Eye, RefreshCw, Plus,  } from 'lucide-react';
-
-interface BusinessDocument {
-  id: string;
-  businessName: string;
-  businessType: 'Seller' | 'Buyer';
-  owner: string;
-  docType: string;
-  fileName: string;
-  fileSize: string;
-  uploadedAt: string;
-  expiresAt?: string;
-  status: 'Verified' | 'Pending' | 'Rejected' | 'Expired' | 'Under Review';
-  verifiedBy?: string;
-  verifiedAt?: string;
-  rejectionReason?: string;
-}
-
-const mockDocuments: BusinessDocument[] = [
-  {
-    id: 'adoc1', businessName: 'Spice Route Kitchens', businessType: 'Seller', owner: 'Priya Nambiar',
-    docType: 'FSSAI License', fileName: 'FSSAI_License_2026.pdf', fileSize: '1.2 MB',
-    uploadedAt: '2026-03-10', expiresAt: '2027-03-09',
-    status: 'Verified', verifiedBy: 'Admin Ravi', verifiedAt: '2026-03-12',
-  },
-  {
-    id: 'adoc2', businessName: 'BioFuel India Pvt. Ltd.', businessType: 'Buyer', owner: 'Arjun Mehta',
-    docType: 'Pollution Control Certificate', fileName: 'PCC_BioFuel_2026.pdf', fileSize: '2.4 MB',
-    uploadedAt: '2026-09-10',
-    status: 'Pending',
-  },
-  {
-    id: 'adoc3', businessName: 'CloudKitchen Co.', businessType: 'Seller', owner: 'Kavitha Reddy',
-    docType: 'GST Certificate', fileName: 'GST_CloudKitchen.pdf', fileSize: '0.9 MB',
-    uploadedAt: '2026-09-05',
-    status: 'Under Review',
-  },
-  {
-    id: 'adoc4', businessName: 'Sunrise Restaurants', businessType: 'Seller', owner: 'Mohan Das',
-    docType: 'FSSAI License', fileName: 'FSSAI_Sunrise_expired.pdf', fileSize: '1.1 MB',
-    uploadedAt: '2026-08-20', expiresAt: '2026-08-31',
-    status: 'Expired', rejectionReason: 'License expired on Aug 31, 2026. Please upload renewed license.',
-  },
-  {
-    id: 'adoc5', businessName: 'Green Energy Solutions', businessType: 'Buyer', owner: 'Rahul Sharma',
-    docType: 'Company Registration', fileName: 'CompanyReg_GreenEnergy.pdf', fileSize: '1.8 MB',
-    uploadedAt: '2026-09-07',
-    status: 'Verified', verifiedBy: 'Admin Priya', verifiedAt: '2026-09-08',
-  },
-  {
-    id: 'adoc6', businessName: 'Cafe Bliss', businessType: 'Seller', owner: 'Ananya Singh',
-    docType: 'Trade License', fileName: 'TradeLicense_CafeBliss.pdf', fileSize: '0.7 MB',
-    uploadedAt: '2026-09-08',
-    status: 'Rejected', rejectionReason: 'Document is illegible. Please upload a clear scan.',
-  },
-  {
-    id: 'adoc7', businessName: 'EcoRecycle Corp', businessType: 'Buyer', owner: 'Preethi Nair',
-    docType: 'Pollution Control Certificate', fileName: 'PCC_EcoRecycle.pdf', fileSize: '3.1 MB',
-    uploadedAt: '2026-09-03',
-    status: 'Verified', verifiedBy: 'Admin Ravi', verifiedAt: '2026-09-04',
-  },
-  {
-    id: 'adoc8', businessName: 'Mumbai Dhabas', businessType: 'Seller', owner: 'Suresh Kumar',
-    docType: 'Address Proof', fileName: 'AddressProof_MumbaiDhabas.pdf', fileSize: '2.0 MB',
-    uploadedAt: '2026-09-12',
-    status: 'Pending',
-  },
-];
+import { adminApi, type AdminDocument as BusinessDocument } from '@/lib/admin-api';
+import { toast } from 'sonner';
 
 const statusConfig: Record<string, { cls: string; icon: React.ReactNode }> = {
   Verified: { cls: 'badge-active', icon: <CheckCircle size={12} /> },
@@ -83,11 +18,15 @@ export default function AdminDocumentsSection() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [selectedDoc, setSelectedDoc] = useState<BusinessDocument | null>(null);
+  const [documentData,setDocumentData]=useState<BusinessDocument[]>([]);
+  useEffect(()=>{adminApi.documents().then(setDocumentData).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load documents'));},[]);
+  const updateDocument=async(id:string,action:'verify'|'reject')=>{try{const updated=await adminApi.documentAction(id,action,action==='reject'?'Rejected by administrator':undefined);setDocumentData(items=>items.map(d=>d.id===id?updated:d));if(selectedDoc?.id===id)setSelectedDoc(updated);toast.success(action==='verify'?'Document verified':'Document rejected');}catch(e){toast.error(e instanceof Error?e.message:'Unable to update document');}};
+  const downloadDocument=async(doc:BusinessDocument)=>{try{await adminApi.downloadDocument(doc.id,doc.fileName);}catch(e){toast.error(e instanceof Error?e.message:'Unable to download document');}};
 
   const statuses = ['All', 'Pending', 'Under Review', 'Verified', 'Rejected', 'Expired'];
   const types = ['All', 'Seller', 'Buyer'];
 
-  const filtered = mockDocuments.filter((d) => {
+  const filtered = documentData.filter((d) => {
     const matchSearch = d.businessName.toLowerCase().includes(search.toLowerCase()) ||
       d.owner.toLowerCase().includes(search.toLowerCase()) ||
       d.docType.toLowerCase().includes(search.toLowerCase());
@@ -97,10 +36,10 @@ export default function AdminDocumentsSection() {
   });
 
   const stats = {
-    total: mockDocuments.length,
-    pending: mockDocuments.filter((d) => d.status === 'Pending' || d.status === 'Under Review').length,
-    verified: mockDocuments.filter((d) => d.status === 'Verified').length,
-    action: mockDocuments.filter((d) => d.status === 'Rejected' || d.status === 'Expired').length,
+    total: documentData.length,
+    pending: documentData.filter((d) => d.status === 'Pending' || d.status === 'Under Review').length,
+    verified: documentData.filter((d) => d.status === 'Verified').length,
+    action: documentData.filter((d) => d.status === 'Rejected' || d.status === 'Expired').length,
   };
 
   return (
@@ -113,7 +52,7 @@ export default function AdminDocumentsSection() {
             Review and manage all uploaded business documents, FSSAI licenses, GST certificates, and compliance files
           </p>
         </div>
-        <button className="btn-primary py-2 text-xs gap-1.5">
+        <button onClick={()=>toast.info('Document requests are sent from the selected verification workflow')} className="btn-primary py-2 text-xs gap-1.5">
           <Plus size={13} />
           Request Document
         </button>
@@ -242,7 +181,7 @@ export default function AdminDocumentsSection() {
                         >
                           <Eye size={13} />
                         </button>
-                        <button
+                        <button onClick={() => downloadDocument(doc)}
                           className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                           title="Download"
                         >
@@ -250,10 +189,10 @@ export default function AdminDocumentsSection() {
                         </button>
                         {(doc.status === 'Pending' || doc.status === 'Under Review') && (
                           <>
-                            <button className="px-2 py-1 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-medium">
+                            <button onClick={() => updateDocument(doc.id,'verify')} className="px-2 py-1 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-medium">
                               Verify
                             </button>
-                            <button className="px-2 py-1 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-medium">
+                            <button onClick={() => updateDocument(doc.id,'reject')} className="px-2 py-1 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-medium">
                               Reject
                             </button>
                           </>
@@ -299,13 +238,13 @@ export default function AdminDocumentsSection() {
               </div>
             )}
             <div className="flex gap-2 justify-end">
-              <button className="btn-ghost py-2 px-4 text-xs gap-1.5"><Download size={13} />Download</button>
+              <button onClick={() => downloadDocument(selectedDoc)} className="btn-ghost py-2 px-4 text-xs gap-1.5"><Download size={13} />Download</button>
               {(selectedDoc.status === 'Pending' || selectedDoc.status === 'Under Review') && (
                 <>
-                  <button className="py-2 px-4 rounded-xl bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-semibold gap-1.5 flex items-center">
+                  <button onClick={() => updateDocument(selectedDoc.id,'verify')} className="py-2 px-4 rounded-xl bg-success/10 text-success hover:bg-success/20 transition-colors text-xs font-semibold gap-1.5 flex items-center">
                     <CheckCircle size={13} />Verify
                   </button>
-                  <button className="py-2 px-4 rounded-xl bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold gap-1.5 flex items-center">
+                  <button onClick={() => updateDocument(selectedDoc.id,'reject')} className="py-2 px-4 rounded-xl bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold gap-1.5 flex items-center">
                     <XCircle size={13} />Reject
                   </button>
                 </>

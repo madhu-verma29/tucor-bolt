@@ -1,31 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Eye, CheckCircle, XCircle, UserCheck, UserX, Mail, Phone } from 'lucide-react';
+import { adminApi, type AdminUser as User } from '@/lib/admin-api';
+import { toast } from 'sonner';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: 'Seller' | 'Buyer';
-  status: 'Active' | 'Pending' | 'Suspended' | 'Rejected';
-  business: string;
-  joinedAt: string;
-  lastActive: string;
-  verified: boolean;
-}
-
-const mockUsers: User[] = [
-  { id: 'USR-001', name: 'Priya Nambiar', email: 'priya@spiceroute.in', phone: '+91 98201 34567', role: 'Seller', status: 'Active', business: 'Spice Route Kitchens', joinedAt: '2026-03-12', lastActive: '2026-09-10', verified: true },
-  { id: 'USR-002', name: 'Arjun Mehta', email: 'arjun@biofuelindia.com', phone: '+91 97301 22456', role: 'Buyer', status: 'Active', business: 'BioFuel India Ltd.', joinedAt: '2026-02-08', lastActive: '2026-09-09', verified: true },
-  { id: 'USR-003', name: 'Kavitha Reddy', email: 'kavitha@cloudkitchen.co', phone: '+91 96401 11345', role: 'Seller', status: 'Pending', business: 'CloudKitchen Co.', joinedAt: '2026-09-05', lastActive: '2026-09-05', verified: false },
-  { id: 'USR-004', name: 'Rahul Sharma', email: 'rahul@greenenergy.in', phone: '+91 95501 00234', role: 'Buyer', status: 'Pending', business: 'Green Energy Solutions', joinedAt: '2026-09-07', lastActive: '2026-09-07', verified: false },
-  { id: 'USR-005', name: 'Deepa Krishnan', email: 'deepa@hotelgrand.com', phone: '+91 94601 99123', role: 'Seller', status: 'Active', business: 'Hotel Grand Palace', joinedAt: '2026-04-20', lastActive: '2026-09-08', verified: true },
-  { id: 'USR-006', name: 'Vikram Patel', email: 'vikram@recycletech.in', phone: '+91 93701 88012', role: 'Buyer', status: 'Suspended', business: 'RecycleTech Industries', joinedAt: '2026-01-15', lastActive: '2026-08-01', verified: true },
-  { id: 'USR-007', name: 'Ananya Singh', email: 'ananya@cafebliss.com', phone: '+91 92801 77901', role: 'Seller', status: 'Pending', business: 'Cafe Bliss', joinedAt: '2026-09-08', lastActive: '2026-09-08', verified: false },
-  { id: 'USR-008', name: 'Suresh Kumar', email: 'suresh@biodiesel.co', phone: '+91 91901 66890', role: 'Buyer', status: 'Active', business: 'Biodiesel Corp', joinedAt: '2026-05-10', lastActive: '2026-09-10', verified: true },
-];
 
 const statusColors: Record<string, string> = {
   Active: 'bg-green-500/15 text-green-600 border-green-500/30',
@@ -44,7 +23,8 @@ export default function AdminUsersSection() {
   const [filterRole, setFilterRole] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  useEffect(()=>{adminApi.users().then(setUsers).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load users'));},[]);
 
   const filtered = users.filter((u) => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || u.business.toLowerCase().includes(search.toLowerCase());
@@ -53,15 +33,14 @@ export default function AdminUsersSection() {
     return matchSearch && matchRole && matchStatus;
   });
 
-  const handleApprove = (id: string) => {
-    setUsers((prev) => prev.map((u) => u.id === id ? { ...u, status: 'Active', verified: true } : u));
-    if (selectedUser?.id === id) setSelectedUser((prev) => prev ? { ...prev, status: 'Active', verified: true } : null);
+  const handleApprove = async (id: string) => {
+    try{const updated=await adminApi.userAction(id,'approve');setUsers((prev) => prev.map((u) => u.id === id ? updated : u));if (selectedUser?.id === id) setSelectedUser(updated);toast.success('User approved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to approve user');}
   };
 
-  const handleReject = (id: string) => {
-    setUsers((prev) => prev.map((u) => u.id === id ? { ...u, status: 'Rejected' } : u));
-    if (selectedUser?.id === id) setSelectedUser((prev) => prev ? { ...prev, status: 'Rejected' } : null);
+  const handleReject = async (id: string) => {
+    try{const updated=await adminApi.userAction(id,'reject');setUsers((prev) => prev.map((u) => u.id === id ? updated : u));if (selectedUser?.id === id) setSelectedUser(updated);toast.success('User rejected');}catch(e){toast.error(e instanceof Error?e.message:'Unable to reject user');}
   };
+  const handleSuspend=async(id:string)=>{try{const updated=await adminApi.userAction(id,'suspend');setUsers(prev=>prev.map(u=>u.id===id?updated:u));if(selectedUser?.id===id)setSelectedUser(updated);toast.success('User suspended');}catch(e){toast.error(e instanceof Error?e.message:'Unable to suspend user');}};
 
   const pendingCount = users.filter((u) => u.status === 'Pending').length;
 
@@ -259,7 +238,7 @@ export default function AdminUsersSection() {
               </div>
             )}
             {selectedUser.status === 'Active' && (
-              <button className="w-full px-4 py-2 rounded-xl bg-red-500/10 text-red-600 border border-red-500/30 text-sm font-semibold hover:bg-red-500/20 transition-colors duration-150">
+              <button onClick={() => handleSuspend(selectedUser.id)} className="w-full px-4 py-2 rounded-xl bg-red-500/10 text-red-600 border border-red-500/30 text-sm font-semibold hover:bg-red-500/20 transition-colors duration-150">
                 Suspend Account
               </button>
             )}

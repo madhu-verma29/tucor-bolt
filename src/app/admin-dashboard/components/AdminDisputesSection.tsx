@@ -1,63 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, AlertTriangle, MessageSquare, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
-
-interface Dispute {
-  id: string;
-  orderId: string;
-  raisedBy: string;
-  raisedByRole: 'Seller' | 'Buyer';
-  against: string;
-  reason: string;
-  description: string;
-  status: 'Open' | 'Under Investigation' | 'Resolved' | 'Escalated' | 'Closed';
-  priority: 'High' | 'Medium' | 'Low';
-  amount: number;
-  raisedAt: string;
-  updatedAt: string;
-  resolution?: string;
-  timeline: { date: string; action: string; by: string }[];
-}
-
-const mockDisputes: Dispute[] = [
-  {
-    id: 'DSP-2026-0012', orderId: 'ORD-2026-0198', raisedBy: 'Sunrise Restaurants', raisedByRole: 'Seller',
-    against: 'Green Energy Solutions', reason: 'Quality Dispute',
-    description: 'Buyer claims oil quality does not match Grade A specification. Seller disputes this and has lab test results.',
-    status: 'Escalated', priority: 'High', amount: 7200, raisedAt: '2026-09-06', updatedAt: '2026-09-09',
-    timeline: [
-      { date: '2026-09-06', action: 'Dispute raised by seller', by: 'Sunrise Restaurants' },
-      { date: '2026-09-07', action: 'TUCOR acknowledged dispute', by: 'TUCOR Admin' },
-      { date: '2026-09-08', action: 'Investigation started', by: 'TUCOR Admin' },
-      { date: '2026-09-09', action: 'Escalated to senior review', by: 'TUCOR Admin' },
-    ],
-  },
-  {
-    id: 'DSP-2026-0011', orderId: 'ORD-2026-0185', raisedBy: 'BioFuel India Ltd.', raisedByRole: 'Buyer',
-    against: 'Hotel Grand Palace', reason: 'Volume Mismatch',
-    description: 'Received 480L instead of confirmed 600L. Requesting partial refund or additional collection.',
-    status: 'Under Investigation', priority: 'Medium', amount: 18000, raisedAt: '2026-09-04', updatedAt: '2026-09-08',
-    timeline: [
-      { date: '2026-09-04', action: 'Dispute raised by buyer', by: 'BioFuel India Ltd.' },
-      { date: '2026-09-05', action: 'TUCOR acknowledged dispute', by: 'TUCOR Admin' },
-      { date: '2026-09-08', action: 'Investigation started — pickup agent contacted', by: 'TUCOR Admin' },
-    ],
-  },
-  {
-    id: 'DSP-2026-0010', orderId: 'ORD-2026-0172', raisedBy: 'Cafe Bliss', raisedByRole: 'Seller',
-    against: 'Biodiesel Corp', reason: 'Payment Delay',
-    description: 'Payment overdue by 12 days. Seller requesting immediate settlement.',
-    status: 'Resolved', priority: 'Low', amount: 4680, raisedAt: '2026-08-28', updatedAt: '2026-09-02',
-    resolution: 'Payment processed on 2026-09-02. Dispute closed.',
-    timeline: [
-      { date: '2026-08-28', action: 'Dispute raised by seller', by: 'Cafe Bliss' },
-      { date: '2026-08-29', action: 'TUCOR reviewed payment status', by: 'TUCOR Admin' },
-      { date: '2026-09-02', action: 'Payment processed and settled', by: 'TUCOR Finance' },
-      { date: '2026-09-02', action: 'Dispute resolved and closed', by: 'TUCOR Admin' },
-    ],
-  },
-];
+import { adminApi, type AdminDispute as Dispute } from '@/lib/admin-api';
+import { toast } from 'sonner';
 
 const statusConfig: Record<string, string> = {
   'Open': 'bg-amber-500/15 text-amber-600 border-amber-500/30',
@@ -77,7 +23,8 @@ export default function AdminDisputesSection() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [disputes, setDisputes] = useState<Dispute[]>(mockDisputes);
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  useEffect(()=>{adminApi.disputes().then(setDisputes).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load disputes'));},[]);
 
   const filtered = disputes.filter((d) => {
     const matchSearch = d.id.toLowerCase().includes(search.toLowerCase()) || d.raisedBy.toLowerCase().includes(search.toLowerCase()) || d.orderId.toLowerCase().includes(search.toLowerCase());
@@ -85,19 +32,12 @@ export default function AdminDisputesSection() {
     return matchSearch && matchStatus;
   });
 
-  const handleResolve = (id: string) => {
-    setDisputes((prev) => prev.map((d) => d.id === id ? {
-      ...d, status: 'Resolved' as const,
-      resolution: 'Resolved by admin on ' + new Date().toISOString().split('T')[0],
-      timeline: [...d.timeline, { date: new Date().toISOString().split('T')[0], action: 'Dispute resolved by admin', by: 'TUCOR Admin' }],
-    } : d));
+  const handleResolve = async (id: string) => {
+    try{const updated=await adminApi.disputeAction(id,'resolve');setDisputes(prev=>prev.map(d=>d.id===id?updated:d));toast.success('Dispute resolved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to resolve dispute');}
   };
 
-  const handleEscalate = (id: string) => {
-    setDisputes((prev) => prev.map((d) => d.id === id ? {
-      ...d, status: 'Escalated' as const,
-      timeline: [...d.timeline, { date: new Date().toISOString().split('T')[0], action: 'Escalated to senior review', by: 'TUCOR Admin' }],
-    } : d));
+  const handleEscalate = async (id: string) => {
+    try{const updated=await adminApi.disputeAction(id,'escalate');setDisputes(prev=>prev.map(d=>d.id===id?updated:d));toast.success('Dispute escalated');}catch(e){toast.error(e instanceof Error?e.message:'Unable to escalate dispute');}
   };
 
   const openCount = disputes.filter((d) => d.status === 'Open' || d.status === 'Escalated').length;

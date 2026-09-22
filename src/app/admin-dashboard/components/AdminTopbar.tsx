@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Menu, PanelLeftClose, Bell, Search, ChevronDown, LogOut, Settings, Shield } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
+import { adminApi, type AdminNotification, type AdminProfile } from '@/lib/admin-api';
 
 interface Props {
   onToggleSidebar: () => void;
@@ -28,21 +29,16 @@ const sectionLabels: Record<string, string> = {
   settings: 'Settings',
 };
 
-const adminNotifications = [
-  { id: 'an-001', message: '6 new business verification requests pending', time: '10 min ago', unread: true },
-  { id: 'an-002', message: 'Dispute DSP-2026-0012 escalated — requires review', time: '45 min ago', unread: true },
-  { id: 'an-003', message: '4 new user registrations awaiting approval', time: '2 hrs ago', unread: true },
-  { id: 'an-004', message: 'Order ORD-2026-0201 flagged for manual review', time: '3 hrs ago', unread: false },
-  { id: 'an-005', message: 'Monthly platform report generated for Aug 2026', time: '1 day ago', unread: false },
-];
-
 export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebarCollapsed, activeSection }: Props) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifications,setNotifications]=useState<AdminNotification[]>([]);
+  const [adminProfile,setAdminProfile]=useState<AdminProfile|null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    Promise.all([adminApi.notifications(),adminApi.profile()]).then(([n,p])=>{setNotifications(n);setAdminProfile(p)}).catch(()=>{});
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
@@ -51,7 +47,7 @@ export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const unreadCount = adminNotifications.filter((n) => n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
     <header className="h-14 bg-card border-b border-border flex items-center gap-3 px-4 flex-shrink-0 z-30">
@@ -110,7 +106,7 @@ export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
                 <span className="text-xs px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 font-semibold">{unreadCount} new</span>
               </div>
               <div className="max-h-72 overflow-y-auto scrollbar-thin">
-                {adminNotifications.map((n) => (
+                {notifications.map((n) => (
                   <div
                     key={n.id}
                     className={`px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors duration-100 cursor-pointer ${n.unread ? 'bg-amber-500/5' : ''}`}
@@ -142,15 +138,15 @@ export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
             <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 font-bold text-xs">
               A
             </div>
-            <span className="hidden sm:block text-sm font-medium text-foreground">Admin</span>
+            <span className="hidden sm:block text-sm font-medium text-foreground">{adminProfile?.name||'Admin'}</span>
             <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-150 ${profileOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {profileOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-52 bg-card border border-border rounded-xl shadow-card-lg z-50 overflow-hidden animate-fade-in-up">
               <div className="px-4 py-3 border-b border-border">
-                <div className="font-semibold text-foreground text-sm">Admin User</div>
-                <div className="text-xs text-muted-foreground">admin@tucor.in</div>
+                <div className="font-semibold text-foreground text-sm">{adminProfile?.name||'Admin User'}</div>
+                <div className="text-xs text-muted-foreground">{adminProfile?.email||''}</div>
               </div>
               <button className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors duration-100">
                 <Settings size={15} className="text-muted-foreground" />

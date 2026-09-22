@@ -1,33 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ListPlus, Search, CheckCircle2, Clock, AlertCircle, Eye, Flag, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/AppIcon';
+import { adminApi, type AdminListing } from '@/lib/admin-api';
 
-
-interface AdminListing {
-  id: string;
-  oilType: string;
-  volumeLiters: number;
-  gradeLabel: string;
-  pricePerLiter: number;
-  status: 'Active' | 'Pending Verification' | 'Flagged' | 'Rejected' | 'Expired';
-  sellerRef: string;
-  city: string;
-  listedAt: string;
-}
-
-const mockAdminListings: AdminListing[] = [
-  { id: 'LST-2026-0041', oilType: 'Palm', volumeLiters: 480, gradeLabel: 'A', pricePerLiter: 28, status: 'Active', sellerRef: 'SEL-****-0041', city: 'Mumbai', listedAt: '2026-09-01' },
-  { id: 'LST-2026-0038', oilType: 'Sunflower', volumeLiters: 310, gradeLabel: 'A', pricePerLiter: 31, status: 'Active', sellerRef: 'SEL-****-0038', city: 'Pune', listedAt: '2026-09-02' },
-  { id: 'LST-2026-0033', oilType: 'Mustard', volumeLiters: 220, gradeLabel: 'B', pricePerLiter: 24, status: 'Active', sellerRef: 'SEL-****-0033', city: 'Delhi', listedAt: '2026-08-28' },
-  { id: 'LST-2026-0021', oilType: 'Soybean', volumeLiters: 390, gradeLabel: 'A', pricePerLiter: 33, status: 'Pending Verification', sellerRef: 'SEL-****-0021', city: 'Hyderabad', listedAt: '2026-09-07' },
-  { id: 'LST-2026-0089', oilType: 'Blended', volumeLiters: 540, gradeLabel: 'B', pricePerLiter: 20, status: 'Flagged', sellerRef: 'SEL-****-0089', city: 'Bengaluru', listedAt: '2026-09-06' },
-  { id: 'LST-2026-0075', oilType: 'Palm', volumeLiters: 180, gradeLabel: 'C', pricePerLiter: 16, status: 'Rejected', sellerRef: 'SEL-****-0075', city: 'Chennai', listedAt: '2026-09-04' },
-  { id: 'LST-2026-0062', oilType: 'Sunflower', volumeLiters: 270, gradeLabel: 'A', pricePerLiter: 30, status: 'Active', sellerRef: 'SEL-****-0062', city: 'Ahmedabad', listedAt: '2026-09-03' },
-  { id: 'LST-2026-0055', oilType: 'Mustard', volumeLiters: 160, gradeLabel: 'A', pricePerLiter: 27, status: 'Pending Verification', sellerRef: 'SEL-****-0055', city: 'Kolkata', listedAt: '2026-09-08' },
-];
 
 const statusConfig = {
   'Active': { className: 'badge-active', icon: CheckCircle2 },
@@ -42,18 +20,21 @@ type FilterStatus = 'all' | AdminListing['status'];
 export default function AdminListingsSection() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterStatus>('all');
+  const [adminListings,setAdminListings]=useState<AdminListing[]>([]);
+  useEffect(()=>{adminApi.listings().then(setAdminListings).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load listings'));},[]);
+  const listingAction=async(id:string,action:'approve'|'flag')=>{try{const updated=await adminApi.listingAction(id,action);setAdminListings(items=>items.map(l=>l.id===id?updated:l));toast.success(action==='approve'?`Listing ${id} approved`:`Listing ${id} flagged for review`);}catch(e){toast.error(e instanceof Error?e.message:'Unable to update listing');}};
 
-  const filtered = mockAdminListings.filter((l) => {
+  const filtered = adminListings.filter((l) => {
     const matchSearch = l.id.toLowerCase().includes(search.toLowerCase()) || l.oilType.toLowerCase().includes(search.toLowerCase()) || l.city.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === 'all' || l.status === filter;
     return matchSearch && matchFilter;
   });
 
   const counts = {
-    all: mockAdminListings.length,
-    Active: mockAdminListings.filter((l) => l.status === 'Active').length,
-    'Pending Verification': mockAdminListings.filter((l) => l.status === 'Pending Verification').length,
-    Flagged: mockAdminListings.filter((l) => l.status === 'Flagged').length,
+    all: adminListings.length,
+    Active: adminListings.filter((l) => l.status === 'Active').length,
+    'Pending Verification': adminListings.filter((l) => l.status === 'Pending Verification').length,
+    Flagged: adminListings.filter((l) => l.status === 'Flagged').length,
   };
 
   return (
@@ -66,7 +47,7 @@ export default function AdminListingsSection() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Listings', value: mockAdminListings.length, color: 'text-foreground', bg: 'bg-muted', icon: ListPlus },
+          { label: 'Total Listings', value: adminListings.length, color: 'text-foreground', bg: 'bg-muted', icon: ListPlus },
           { label: 'Active', value: counts.Active, color: 'text-success', bg: 'bg-success-bg', icon: CheckCircle2 },
           { label: 'Pending Review', value: counts['Pending Verification'], color: 'text-warning', bg: 'bg-warning-bg', icon: Clock },
           { label: 'Flagged', value: counts.Flagged, color: 'text-danger', bg: 'bg-danger-bg', icon: Flag },
@@ -152,12 +133,12 @@ export default function AdminListingsSection() {
                           <Eye size={14} />
                         </button>
                         {listing.status === 'Pending Verification' && (
-                          <button onClick={() => toast.success(`Listing ${listing.id} approved`)} className="p-1.5 rounded-lg hover:bg-success-bg text-muted-foreground hover:text-success transition-colors duration-150" title="Approve">
+                          <button onClick={() => listingAction(listing.id,'approve')} className="p-1.5 rounded-lg hover:bg-success-bg text-muted-foreground hover:text-success transition-colors duration-150" title="Approve">
                             <CheckCircle2 size={14} />
                           </button>
                         )}
                         {listing.status === 'Active' && (
-                          <button onClick={() => toast.warning(`Listing ${listing.id} flagged for review`)} className="p-1.5 rounded-lg hover:bg-warning-bg text-muted-foreground hover:text-warning transition-colors duration-150" title="Flag">
+                          <button onClick={() => listingAction(listing.id,'flag')} className="p-1.5 rounded-lg hover:bg-warning-bg text-muted-foreground hover:text-warning transition-colors duration-150" title="Flag">
                             <Flag size={14} />
                           </button>
                         )}

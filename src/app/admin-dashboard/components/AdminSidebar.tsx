@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import {
@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   X,
 } from 'lucide-react';
+import { adminApi, type AdminProfile, type AdminSummary } from '@/lib/admin-api';
 
 interface NavItem {
   id: string;
@@ -63,6 +64,8 @@ interface Props {
 }
 
 export default function AdminSidebar({ collapsed, mobileOpen, onMobileClose, activeSection, onNavigate }: Props) {
+  const [profile,setProfile]=useState<AdminProfile|null>(null);const [summary,setSummary]=useState<AdminSummary|null>(null);
+  useEffect(()=>{Promise.all([adminApi.profile(),adminApi.summary()]).then(([p,s])=>{setProfile(p);setSummary(s)}).catch(()=>{});},[activeSection]);
   const groups = [...new Set(navItems.map((n) => n.group))];
 
   const sidebarContent = (
@@ -84,8 +87,8 @@ export default function AdminSidebar({ collapsed, mobileOpen, onMobileClose, act
               A
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-foreground truncate">Admin User</div>
-              <div className="text-xs text-muted-foreground truncate">admin@tucor.in</div>
+              <div className="text-xs font-bold text-foreground truncate">{profile?.name||'Admin User'}</div>
+              <div className="text-xs text-muted-foreground truncate">{profile?.email||''}</div>
             </div>
             <span className="text-xs px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 font-semibold border border-amber-500/30 flex-shrink-0">Admin</span>
           </div>
@@ -105,6 +108,7 @@ export default function AdminSidebar({ collapsed, mobileOpen, onMobileClose, act
               {items.map((item) => {
                 const ItemIcon = item.icon;
                 const isActive = activeSection === item.id;
+                const badge=item.id==='users'?summary?.verifications:item.id==='businesses'?summary?.verifications:item.id==='verification'?summary?.verifications:item.id==='orders'?summary?.orders:item.id==='disputes'?summary?.disputes:item.badge;
                 return (
                   <button
                     key={`admin-sidebar-nav-${item.id}`}
@@ -119,16 +123,16 @@ export default function AdminSidebar({ collapsed, mobileOpen, onMobileClose, act
                     {!collapsed && (
                       <>
                         <span className="text-sm flex-1 text-left">{item.label}</span>
-                        {item.badge && (
+                        {!!badge && (
                           <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                            {item.badge}
+                            {badge}
                           </span>
                         )}
                       </>
                     )}
-                    {collapsed && item.badge && (
+                    {collapsed && !!badge && (
                       <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
-                        {item.badge}
+                        {badge}
                       </span>
                     )}
                   </button>
