@@ -3,9 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Upload, CheckCircle2, Clock, AlertCircle, Download, Trash2, Plus, Shield } from 'lucide-react';
 import { toast } from 'sonner';
-import Icon from '@/components/ui/AppIcon';
-import { buyerApi, uploadBuyerDocument } from '@/lib/buyer-api';
-import { getSession } from '@/lib/auth-api';
+import { buyerApi, downloadBuyerDocument, uploadBuyerDocument } from '@/lib/buyer-api';
 
 
 interface Document {
@@ -36,7 +34,7 @@ const docTypeIcons: Record<Document['type'], string> = {
 };
 
 export default function DocumentsSection() {
-  const [documents, setDocuments] = useState<Document[]>([]); const fileRef=useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState<Document['type']>('GST Certificate');const mapType=(t:string):Document['type']=>t==='GST'?'GST Certificate':t==='ADDRESS_PROOF'?'Address Proof':t==='BANK_PROOF'?'Bank Details':t==='PAN'?'PAN Card':t==='FSSAI_OR_REGISTRATION'?'FSSAI License':'Trade License';const apiType=(t:Document['type'])=>t==='GST Certificate'?'GST':t==='Address Proof'?'ADDRESS_PROOF':t==='Bank Details'?'BANK_PROOF':t==='PAN Card'?'PAN':t==='FSSAI License'?'FSSAI_OR_REGISTRATION':'TRADE_LICENSE';const load=()=>buyerApi.documents().then(ds=>setDocuments(ds.map((d:any)=>({id:d.id,name:d.name,type:mapType(d.type),status:d.status==='VERIFIED'?'Verified':d.status==='REJECTED'?'Rejected':'Pending',uploadedAt:d.uploadedAt?.slice(0,10)||'',fileSize:(d.sizeBytes/1024/1024).toFixed(2)+' MB',required:['GST','ADDRESS_PROOF','BANK_PROOF','PAN','FSSAI_OR_REGISTRATION'].includes(d.type)}))));useEffect(()=>{load().catch(()=>{})},[]);
+  const [documents, setDocuments] = useState<Document[]>([]); const fileRef=useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState<Document['type']>('GST Certificate');const mapType=(t:string):Document['type']=>t==='GST'?'GST Certificate':t==='ADDRESS_PROOF'?'Address Proof':t==='BANK_PROOF'?'Bank Details':t==='PAN'?'PAN Card':t==='FSSAI_OR_REGISTRATION'?'FSSAI License':'Trade License';const apiType=(t:Document['type'])=>t==='GST Certificate'?'GST':t==='Address Proof'?'ADDRESS_PROOF':t==='Bank Details'?'BANK_PROOF':t==='PAN Card'?'PAN':t==='FSSAI License'?'FSSAI_OR_REGISTRATION':'TRADE_LICENSE';const load=()=>buyerApi.documents().then(ds=>setDocuments(ds.map(d=>({id:d.id,name:d.name,type:mapType(d.type),status:d.expiresAt&&new Date(d.expiresAt)<new Date()?'Expired':d.status==='VERIFIED'?'Verified':d.status==='REJECTED'?'Rejected':'Pending',uploadedAt:d.uploadedAt?.slice(0,10)||'',expiresAt:d.expiresAt,fileSize:(d.sizeBytes/1024/1024).toFixed(2)+' MB',required:['GST','ADDRESS_PROOF','BANK_PROOF','PAN','FSSAI_OR_REGISTRATION'].includes(d.type)}))));useEffect(()=>{load().catch(e=>toast.error(e instanceof Error?e.message:'Unable to load documents'))},[]);
 
   const verified = documents.filter((d) => d.status === 'Verified').length;
   const pending = documents.filter((d) => d.status === 'Pending').length;
@@ -44,7 +42,7 @@ export default function DocumentsSection() {
 
   const handleUpload=(type:Document['type'])=>{setUploadType(type);fileRef.current?.click()};const onFile=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{await uploadBuyerDocument(apiType(uploadType),f);await load();toast.success('Document uploaded')}catch(err){toast.error(err instanceof Error?err.message:'Upload failed')}finally{e.target.value=''}};
 
-  const handleDownload=async(doc:Document)=>{const s=getSession();const base=(process.env.NEXT_PUBLIC_API_BASE_URL||'http://localhost:8080').replace(/\/$/,'');const res=await fetch(base+'/api/buyer/documents/'+doc.id+'/download',{headers:{Authorization:`Bearer ${s?.accessToken||''}`}});if(!res.ok){toast.error('Download failed');return}const blob=await res.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=doc.name;a.click();URL.revokeObjectURL(url)};
+  const handleDownload=async(doc:Document)=>{try{const blob=await downloadBuyerDocument(doc.id),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=doc.name;a.click();URL.revokeObjectURL(url)}catch(e){toast.error(e instanceof Error?e.message:'Download failed')}};
 
   const handleDelete=async(id:string)=>{try{await buyerApi.deleteDocument(id);setDocuments(prev=>prev.filter(d=>d.id!==id));toast.success('Document removed')}catch(e){toast.error(e instanceof Error?e.message:'Delete failed')}};
 
@@ -89,7 +87,7 @@ export default function DocumentsSection() {
       </div>
 
       {/* Verification badge */}
-      {verified === documents.length && (
+      {documents.length > 0 && verified === documents.length && (
         <div className="card p-4 flex items-center gap-3 border-success/30 bg-success-bg/50">
           <Shield size={18} className="text-success flex-shrink-0" />
           <div>

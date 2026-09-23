@@ -130,7 +130,7 @@ export default function RegisterForm({ onLogin }: { onLogin: () => void }) {
     try {
       const requiredDocs = ['GST Certificate', role === 'Seller' ? 'FSSAI License' : 'Business Registration', 'Address Proof (Utility Bill / Lease)'];
       if (requiredDocs.some((name) => !documentFiles[name])) { toast.error('Please upload all required documents'); return; }
-      await authApi.register({
+      const registration = await authApi.register({
         email: data.email, password: data.password, role: role === 'Buyer' ? 'BUYER' : 'SELLER',
         businessName: data.businessName, businessType: data.businessType, gstNumber: data.gstNumber,
         registrationNumber: data.fssaiNumber || undefined, address: data.address, city: data.city,
@@ -141,7 +141,7 @@ export default function RegisterForm({ onLogin }: { onLogin: () => void }) {
         'GST Certificate':'GST', 'FSSAI License':'FSSAI_OR_REGISTRATION', 'Business Registration':'FSSAI_OR_REGISTRATION',
         'Address Proof (Utility Bill / Lease)':'ADDRESS_PROOF', 'Cancelled Cheque / Bank Statement':'BANK_PROOF'
       };
-      await Promise.all(Object.entries(documentFiles).map(([name,file]) => authApi.uploadRegistrationDocument(data.email, docTypes[name], file)));
+      await Promise.all(Object.entries(documentFiles).map(([name,file]) => authApi.uploadRegistrationDocument(registration.accessToken, docTypes[name], file)));
       setSubmitted(true);
       toast.success('Registration submitted successfully. You can now sign in.');
     } catch (error) {

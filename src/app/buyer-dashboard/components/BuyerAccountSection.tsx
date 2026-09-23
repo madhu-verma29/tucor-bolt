@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { buyerApi, BuyerProfile, uploadBuyerDocument } from '@/lib/buyer-api';
-import { getSession } from '@/lib/auth-api';
+import { buyerApi, BuyerProfile, BuyerPreferences, downloadBuyerDocument, uploadBuyerDocument } from '@/lib/buyer-api';
+import { toast } from 'sonner';
 import { Building2, ShieldCheck, CreditCard, Phone, Settings2, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, EyeOff, Upload, ChevronRight, MapPin, Info, RefreshCw, Hash, Landmark, Plus, Trash2, ToggleLeft, ToggleRight, Mail, MessageSquare, Star,  } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -88,9 +88,9 @@ function CompanyDetailsTab() {
     country: 'India',
   });
 
-  useEffect(()=>{buyerApi.profile().then(p=>setForm({businessName:p.businessName||'',tradeName:p.tradeName||'',businessType:p.businessType||'',category:p.category||'',pan:p.pan||'',cin:p.cin||'',yearEstablished:p.yearEstablished||'',website:p.website||'',address:p.address||'',city:p.city||'',state:p.state||'',pincode:p.pincode||'',country:p.country||'India'})).catch(()=>{});},[]);
+  useEffect(()=>{buyerApi.profile().then(p=>setForm({businessName:p.businessName||'',tradeName:p.tradeName||'',businessType:p.businessType||'',category:p.category||'',pan:p.pan||'',cin:p.cin||'',yearEstablished:p.yearEstablished||'',website:p.website||'',address:p.address||'',city:p.city||'',state:p.state||'',pincode:p.pincode||'',country:p.country||'India'})).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load profile'));},[]);
   const handleChange = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
-  const save=async()=>{try{await buyerApi.updateProfile(form);setEditing(false)}catch{}};
+  const save=async()=>{try{await buyerApi.updateProfile(form);setEditing(false);toast.success('Company details saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save company details')}};
 
   return (
     <div>
@@ -260,11 +260,11 @@ function DocRow({ icon, title, number, status, expiry, submittedOn, note, onUplo
 }
 
 function KYCVerificationTab() {
- const [profile,setProfile]=useState<any>(null),[docs,setDocs]=useState<any[]>([]),[banks,setBanks]=useState<any[]>([]);const inputRef=React.useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState('GST');
- const load=()=>Promise.all([buyerApi.profile(),buyerApi.documents(),buyerApi.bankAccounts()]).then(([p,d,b])=>{setProfile(p);setDocs(d);setBanks(b)});useEffect(()=>{load().catch(()=>{})},[]);
+ const [profile,setProfile]=useState<BuyerProfile|null>(null),[docs,setDocs]=useState<Awaited<ReturnType<typeof buyerApi.documents>>>([]),[banks,setBanks]=useState<Awaited<ReturnType<typeof buyerApi.bankAccounts>>>([]);const inputRef=React.useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState('GST');
+ const load=()=>Promise.all([buyerApi.profile(),buyerApi.documents(),buyerApi.bankAccounts()]).then(([p,d,b])=>{setProfile(p);setDocs(d);setBanks(b)});useEffect(()=>{load().catch(e=>toast.error(e instanceof Error?e.message:'Unable to load verification details'))},[]);
  const status=(type:string):VerificationStatus=>{const d=docs.find(x=>x.type===type);return !d?'not_submitted':d.status==='VERIFIED'?'verified':d.status==='REJECTED'?'rejected':'under_review'};
- const upload=(type:string)=>{setUploadType(type);inputRef.current?.click()};const onFile=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{await uploadBuyerDocument(uploadType,f);await load()}finally{e.target.value=''}};
- const view=async(type:string)=>{const d=docs.find(x=>x.type===type);if(!d)return;const s=getSession(),base=(process.env.NEXT_PUBLIC_API_BASE_URL||'http://localhost:8080').replace(/\/$/,'');const res=await fetch(base+'/api/buyer/documents/'+d.id+'/download',{headers:{Authorization:`Bearer ${s?.accessToken||''}`}});if(!res.ok)return;const blob=await res.blob();const url=URL.createObjectURL(blob);window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60000)};
+ const upload=(type:string)=>{setUploadType(type);inputRef.current?.click()};const onFile=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{await uploadBuyerDocument(uploadType,f);await load();toast.success('Document uploaded')}catch(err){toast.error(err instanceof Error?err.message:'Upload failed')}finally{e.target.value=''}};
+ const view=async(type:string)=>{const d=docs.find(x=>x.type===type);if(!d)return;try{const blob=await downloadBuyerDocument(d.id);const url=URL.createObjectURL(blob);window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(err){toast.error(err instanceof Error?err.message:'Unable to view document')}};
  const checks=[status('GST')==='verified',status('PAN')==='verified',banks.length>0,status('DIRECTOR_KYC')==='verified',status('END_USE_DECLARATION')==='verified'];const complete=checks.filter(Boolean).length,score=Math.round(complete/checks.length*100);
  const rows=[['GST','GST Registration Certificate',profile?.gstNumber||'—'],['PAN','Business PAN Card',profile?.pan||'—'],['END_USE_DECLARATION','End-Use Declaration (UCO)','—'],['DIRECTOR_KYC','Director / Authorized Signatory KYC','—']] as const;
  return <div><input ref={inputRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={onFile}/><div className="card p-5 mb-6 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20"><div className="flex items-center justify-between flex-wrap gap-4"><div><div className="section-label mb-1">Verification Completeness</div><div className="flex items-end gap-2"><span className="text-4xl font-bold text-primary font-mono">{score}</span><span className="text-muted-foreground text-sm mb-1">/ 100</span></div><p className="text-xs text-muted-foreground mt-1">Based on current verification completeness</p></div><div className="flex flex-col gap-2 min-w-[200px]">{[['GST Registration Verified',checks[0]],['Business PAN Verified',checks[1]],['Bank Account Linked',checks[2]],['Director KYC',checks[3]],['End-Use Declaration',checks[4]]].map(([label,done]:any)=><div key={label} className="flex items-center gap-2 text-xs">{done?<CheckCircle2 size={13} className="text-success"/>:<AlertCircle size={13} className="text-warning"/>}<span>{label}</span></div>)}</div></div><div className="mt-4"><div className="flex justify-between text-xs text-muted-foreground mb-1.5"><span>Verification Progress</span><span>{complete} of 5 complete</span></div><div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{width:`${score}%`}}/></div></div></div><SectionCard title="KYC & Compliance Documents" subtitle="Required documents for buyer verification and procurement eligibility">{rows.map(([type,title,num])=>{const d=docs.find(x=>x.type===type);return <DocRow key={type} icon={<ShieldCheck size={16} className="text-primary"/>} title={title} number={num} status={status(type)} submittedOn={d?.uploadedAt?.slice(0,10)} onUpload={()=>upload(type)} onView={d?()=>view(type):undefined}/>})}</SectionCard><SectionCard title="Verification Timeline" subtitle="History of your compliance submissions and approvals"><div className="space-y-3">{docs.map((d:any)=><div key={d.id} className="flex items-start gap-3"><VerificationBadge status={d.status==='VERIFIED'?'verified':d.status==='REJECTED'?'rejected':'under_review'}/><div><div className="text-sm text-foreground">{d.type.replaceAll('_',' ')} — {d.status.replaceAll('_',' ')}</div><div className="text-xs text-muted-foreground mt-0.5">{d.uploadedAt?.slice(0,10)}</div></div></div>)}</div></SectionCard></div>
@@ -283,11 +283,11 @@ interface PaymentCard {
 }
 
 function PaymentMethodsTab() {
-  const [paymentRows,setPaymentRows]=useState<any[]>([]); useEffect(()=>{buyerApi.payments().then(setPaymentRows).catch(()=>setPaymentRows([]));},[]);
+  const [paymentRows,setPaymentRows]=useState<Awaited<ReturnType<typeof buyerApi.payments>>>([]); useEffect(()=>{buyerApi.payments().then(setPaymentRows).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load payments'));},[]);
   const [showFull, setShowFull] = useState<string | null>(null);
   const [methods,setMethods] = useState<PaymentCard[]>([]);
-  useEffect(()=>{buyerApi.bankAccounts().then(a=>setMethods(a.map((x:any)=>({id:x.id,type:'bank',label:`${x.bankName} — ${x.accountType}`,detail:`IFSC: ${x.ifsc} · Branch: ${x.branch||'—'}`,masked:x.accountNumber,verified:x.verified,primary:x.primary})))).catch(()=>setMethods([]));},[]);
-  const refresh=()=>buyerApi.bankAccounts().then(a=>setMethods(a.map((x:any)=>({id:x.id,type:'bank' as const,label:`${x.bankName} — ${x.accountType}`,detail:`IFSC: ${x.ifsc} · Branch: ${x.branch||'—'}`,masked:x.accountNumber,verified:x.verified,primary:x.primary}))));
+  useEffect(()=>{buyerApi.bankAccounts().then(a=>setMethods(a.map(x=>({id:x.id,type:'bank',label:`${x.bankName} — ${x.accountType}`,detail:`IFSC: ${x.ifsc} · Branch: ${x.branch||'—'}`,masked:x.accountNumber,verified:x.verified,primary:x.primary})))).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank accounts'));},[]);
+  const refresh=()=>buyerApi.bankAccounts().then(a=>setMethods(a.map(x=>({id:x.id,type:'bank' as const,label:`${x.bankName} — ${x.accountType}`,detail:`IFSC: ${x.ifsc} · Branch: ${x.branch||'—'}`,masked:x.accountNumber,verified:x.verified,primary:x.primary}))));
 
 
   return (
@@ -301,7 +301,7 @@ function PaymentMethodsTab() {
         title="Saved Payment Methods"
         subtitle="Bank accounts and cards used for procurement payments"
         action={
-          <button className="btn-primary text-xs px-3 py-1.5 gap-1.5">
+          <button onClick={()=>toast.info('Add bank accounts from Business Profile → Bank Account')} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
             <Plus size={13} />Add Method
           </button>
         }
@@ -349,9 +349,9 @@ function PaymentMethodsTab() {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {!m.primary && (
-                  <button onClick={()=>buyerApi.setPrimaryBank(m.id).then(refresh)} className="btn-ghost text-xs px-2.5 py-1.5">Set Primary</button>
+                  <button onClick={()=>buyerApi.setPrimaryBank(m.id).then(refresh).catch(e=>toast.error(e instanceof Error?e.message:'Unable to set primary account'))} className="btn-ghost text-xs px-2.5 py-1.5">Set Primary</button>
                 )}
-                <button onClick={()=>buyerApi.deleteBank(m.id).then(refresh)} className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
+                <button onClick={()=>buyerApi.deleteBank(m.id).then(refresh).then(()=>toast.success('Bank account removed')).catch(e=>toast.error(e instanceof Error?e.message:'Unable to remove bank account'))} className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -373,10 +373,10 @@ function PaymentMethodsTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {paymentRows.map((row:any) => (
+              {paymentRows.slice(0,5).map((row) => (
                 <tr key={row.orderId}>
                   <td className="py-3 pr-4 text-muted-foreground text-xs">{row.settledDate||row.dueDate||'—'}</td>
-                  <td className="py-3 pr-4 font-mono text-xs text-foreground">{row.ref}</td>
+                  <td className="py-3 pr-4 font-mono text-xs text-foreground">{row.orderId}</td>
                   <td className="py-3 pr-4 text-xs text-foreground">{row.reference||'—'}</td>
                   <td className="py-3 text-right font-semibold text-xs text-foreground">{`₹${Number(row.amount).toLocaleString('en-IN')}`}</td>
                   <td className="py-3 pl-4 text-right">
@@ -410,7 +410,7 @@ function ContactInfoTab() {
     warehouseHours: '',
   });
 
-  useEffect(()=>{buyerApi.contacts().then(setForm).catch(()=>{});},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(()=>{buyerApi.contacts().then(setForm).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load contact details'));},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
     <div>
@@ -423,7 +423,7 @@ function ContactInfoTab() {
               <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-3 py-1.5 gap-1.5">
                 <X size={13} />Cancel
               </button>
-              <button onClick={async()=>{try{setForm(await buyerApi.updateContacts(form));setEditing(false)}catch{}}} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
+              <button onClick={async()=>{try{setForm(await buyerApi.updateContacts(form));setEditing(false);toast.success('Contact details saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save contact details')}}} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
                 <Save size={13} />Save
               </button>
             </div>
@@ -585,6 +585,8 @@ function ToggleRow({ label, description, enabled, onToggle }: ToggleRowProps) {
 }
 
 function PreferencesTab() {
+  const defaults:BuyerPreferences={emailOrders:true,emailPickups:true,emailPayments:true,emailKyc:true,smsOrders:true,smsPickups:false,whatsappUpdates:false,autoReorder:false,priceAlerts:true,weeklyReport:true,sustainabilityReport:false,compactView:false,preferredGrade:'Grade A',maxFfa:'3%',minVolume:'500 L',maxPrice:'₹55/L',preferredRegions:'',currency:'INR',language:'English',marketingEmails:false};
+  const [storedPreferences,setStoredPreferences]=useState<BuyerPreferences>(defaults);
   const [prefs, setPrefs] = useState({
     emailOrders: true,
     emailPayments: true,
@@ -600,8 +602,6 @@ function PreferencesTab() {
     compactView: false,
   });
 
-  const toggle = (key: keyof typeof prefs) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
-
   const [oilPrefs, setOilPrefs] = useState({
     preferredGrade: 'Grade A',
     maxFFA: '3%',
@@ -613,6 +613,10 @@ function PreferencesTab() {
   });
 
   const handleOilChange = (k: string, v: string) => setOilPrefs((p) => ({ ...p, [k]: v }));
+  const payload=(nextPrefs=prefs,nextOil=oilPrefs):BuyerPreferences=>({...storedPreferences,emailOrders:nextPrefs.emailOrders,emailPayments:nextPrefs.emailPayments,emailKyc:nextPrefs.emailKYC,smsOrders:nextPrefs.smsOrders,smsPickups:nextPrefs.smsPickups,whatsappUpdates:nextPrefs.whatsappUpdates,autoReorder:nextPrefs.autoReorder,priceAlerts:nextPrefs.priceAlerts,weeklyReport:nextPrefs.weeklyReport,sustainabilityReport:nextPrefs.sustainabilityReport,compactView:nextPrefs.compactView,preferredGrade:nextOil.preferredGrade,maxFfa:nextOil.maxFFA,minVolume:nextOil.minVolume,maxPrice:nextOil.maxPrice,preferredRegions:nextOil.preferredRegions,currency:nextOil.currency,language:nextOil.language});
+  useEffect(()=>{buyerApi.preferences().then(p=>{setStoredPreferences(p);setPrefs(v=>({...v,emailOrders:p.emailOrders,emailPayments:p.emailPayments,emailKYC:p.emailKyc,smsOrders:p.smsOrders,smsPickups:p.smsPickups,whatsappUpdates:p.whatsappUpdates,autoReorder:p.autoReorder,priceAlerts:p.priceAlerts,weeklyReport:p.weeklyReport,sustainabilityReport:p.sustainabilityReport,compactView:p.compactView}));setOilPrefs({preferredGrade:p.preferredGrade,maxFFA:p.maxFfa,minVolume:p.minVolume,maxPrice:p.maxPrice,preferredRegions:p.preferredRegions,currency:p.currency,language:p.language})}).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load preferences'))},[]);
+  const toggle = (key: keyof typeof prefs) => {const next={...prefs,[key]:!prefs[key]};setPrefs(next);buyerApi.updatePreferences(payload(next)).then(setStoredPreferences).catch(e=>{setPrefs(prefs);toast.error(e instanceof Error?e.message:'Unable to save preference')})};
+  const savePreferences=async()=>{try{const saved=await buyerApi.updatePreferences(payload());setStoredPreferences(saved);toast.success('Preferences saved')}catch(e){toast.error(e instanceof Error?e.message:'Unable to save preferences')}};
 
   return (
     <div>
@@ -695,7 +699,7 @@ function PreferencesTab() {
           ))}
         </div>
         <div className="mt-4 flex justify-end">
-          <button className="btn-primary text-xs px-4 py-2 gap-1.5">
+          <button onClick={savePreferences} className="btn-primary text-xs px-4 py-2 gap-1.5">
             <Save size={13} />Save Preferences
           </button>
         </div>
@@ -742,7 +746,7 @@ const TABS: Tab[] = [
 ];
 
 export default function BuyerAccountSection() {
-  const [activeTab, setActiveTab] = useState('company'); const [profile,setProfile]=useState<BuyerProfile|null>(null);useEffect(()=>{buyerApi.profile().then(setProfile).catch(()=>{});},[]);
+  const [activeTab, setActiveTab] = useState('company'); const [profile,setProfile]=useState<BuyerProfile|null>(null);useEffect(()=>{buyerApi.profile().then(setProfile).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load buyer account'));},[]);
 
   const tabContent: Record<string, React.ReactNode> = {
     company: <CompanyDetailsTab />,

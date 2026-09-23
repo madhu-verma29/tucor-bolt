@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { buyerApi, uploadBuyerDocument } from '@/lib/buyer-api';
+import { buyerApi, BuyerPreferences, uploadBuyerDocument } from '@/lib/buyer-api';
 import { getSession } from '@/lib/auth-api';
 import { toast } from 'sonner';
-import { Building2, ShieldCheck, Landmark, Phone, Settings, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, EyeOff, Upload, ChevronRight, MapPin, Info, RefreshCw, Hash, Plus, Trash2, ToggleLeft, ToggleRight, Star, Lock, Globe,  } from 'lucide-react';
+import { Building2, ShieldCheck, Landmark, Phone, Settings, CheckCircle2, Clock, AlertCircle, XCircle, Edit3, Save, X, Eye, Upload, ChevronRight, MapPin, Info, RefreshCw, Hash, Plus, Trash2, ToggleLeft, ToggleRight, Star, Lock, Globe,  } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -271,14 +271,14 @@ interface BankAccount {
   accountType: string;
   accountNumber: string;
   ifsc: string;
-  branch: string;
+  branch?: string;
   verified: boolean;
   primary: boolean;
 }
 
 function BankAccountTab() {
-  const [showFull, setShowFull] = useState<string | null>(null);
-  const [accounts,setAccounts] = useState<BankAccount[]>([]); const [bankForm,setBankForm]=useState({accountHolderName:'',bankName:'',accountNumber:'',confirmAccountNumber:'',ifsc:'',accountType:'Current Account'}); useEffect(()=>{buyerApi.bankAccounts().then(setAccounts).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank accounts'));},[]); const addBank=async()=>{if(!bankForm.accountHolderName||!bankForm.bankName||!bankForm.accountNumber||!bankForm.ifsc){toast.error('Complete required bank details');return}if(bankForm.accountNumber!==bankForm.confirmAccountNumber){toast.error('Account numbers do not match');return}try{await buyerApi.addBankAccount(bankForm);setAccounts(await buyerApi.bankAccounts());setBankForm({accountHolderName:'',bankName:'',accountNumber:'',confirmAccountNumber:'',ifsc:'',accountType:'Current Account'});toast.success('Bank account added')}catch(e){toast.error(e instanceof Error?e.message:'Unable to add account')}}; const setPrimary=async(id:string)=>{await buyerApi.setPrimaryBank(id);setAccounts(await buyerApi.bankAccounts())};const removeBank=async(id:string)=>{await buyerApi.deleteBank(id);setAccounts(await buyerApi.bankAccounts())}; /*
+  const emptyBankForm={accountHolderName:'',bankName:'',accountNumber:'',confirmAccountNumber:'',ifsc:'',accountType:'Current Account'};
+  const [accounts,setAccounts] = useState<BankAccount[]>([]); const [bankForm,setBankForm]=useState(emptyBankForm); useEffect(()=>{buyerApi.bankAccounts().then(setAccounts).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load bank accounts'));},[]); const addBank=async()=>{if(!bankForm.accountHolderName||!bankForm.bankName||!bankForm.accountNumber||!bankForm.ifsc){toast.error('Complete required bank details');return}if(bankForm.accountNumber!==bankForm.confirmAccountNumber){toast.error('Account numbers do not match');return}try{await buyerApi.addBankAccount(bankForm);setAccounts(await buyerApi.bankAccounts());setBankForm(emptyBankForm);toast.success('Bank account added')}catch(e){toast.error(e instanceof Error?e.message:'Unable to add account')}}; const setPrimary=async(id:string)=>{try{await buyerApi.setPrimaryBank(id);setAccounts(await buyerApi.bankAccounts());toast.success('Primary bank account updated')}catch(e){toast.error(e instanceof Error?e.message:'Unable to update primary account')}};const removeBank=async(id:string)=>{try{await buyerApi.deleteBank(id);setAccounts(await buyerApi.bankAccounts());toast.success('Bank account removed')}catch(e){toast.error(e instanceof Error?e.message:'Unable to remove bank account')}}; /*
     {
       id: 'ba-1',
       bankName: 'HDFC Bank',
@@ -312,7 +312,7 @@ function BankAccountTab() {
         title="Linked Bank Accounts"
         subtitle="Accounts used for procurement payments and refunds"
         action={
-          <button className="btn-primary text-xs px-3 py-1.5 gap-1.5">
+          <button onClick={()=>document.getElementById('buyer-bank-account-form')?.scrollIntoView({behavior:'smooth',block:'start'})} className="btn-primary text-xs px-3 py-1.5 gap-1.5">
             <Plus size={13} />Add Account
           </button>
         }
@@ -347,10 +347,11 @@ function BankAccountTab() {
                     {acc.accountNumber}
                   </span>
                   <button
-                    onClick={() => setShowFull(showFull === acc.id ? null : acc.id)}
+                    disabled
+                    title="Full account numbers are never returned by the API"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {showFull === acc.id ? <EyeOff size={13} /> : <Eye size={13} />}
+                    <Eye size={13} />
                   </button>
                 </div>
               </div>
@@ -367,7 +368,7 @@ function BankAccountTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Add New Bank Account" subtitle="Link a new current or savings account for procurement payments">
+      <div id="buyer-bank-account-form"><SectionCard title="Add New Bank Account" subtitle="Link a new current or savings account for procurement payments">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { label: 'Account Holder Name', placeholder: 'As per bank records' },
@@ -387,9 +388,9 @@ function BankAccountTab() {
           <button onClick={addBank} className="btn-primary text-xs px-4 py-2 gap-1.5">
             <Plus size={13} />Add & Verify Account
           </button>
-          <button className="btn-ghost text-xs px-4 py-2">Cancel</button>
+          <button onClick={()=>setBankForm(emptyBankForm)} className="btn-ghost text-xs px-4 py-2">Cancel</button>
         </div>
-      </SectionCard>
+      </SectionCard></div>
     </div>
   );
 }
@@ -583,6 +584,8 @@ function ToggleRow({ label, description, enabled, onToggle }: ToggleRowProps) {
 }
 
 function SettingsTab() {
+  const defaults:BuyerPreferences={emailOrders:true,emailPickups:true,emailPayments:true,emailKyc:true,smsOrders:true,smsPickups:false,whatsappUpdates:false,autoReorder:false,priceAlerts:true,weeklyReport:true,sustainabilityReport:false,compactView:false,preferredGrade:'Grade A',maxFfa:'3%',minVolume:'500 L',maxPrice:'₹55/L',preferredRegions:'',currency:'INR',language:'English',marketingEmails:false};
+  const [storedPreferences,setStoredPreferences]=useState<BuyerPreferences>(defaults);
   const [notifications, setNotifications] = useState({
     orderUpdates: true,
     paymentAlerts: true,
@@ -593,18 +596,24 @@ function SettingsTab() {
   });
 
   const [security, setSecurity] = useState({
-    twoFactor: true,
-    loginAlerts: true,
+    twoFactor: false,
+    loginAlerts: false,
     sessionTimeout: false,
   });
+  const [password,setPassword]=useState({current:'',next:'',confirm:''});
+
+  useEffect(()=>{buyerApi.preferences().then(p=>{setStoredPreferences(p);setNotifications({orderUpdates:p.emailOrders,paymentAlerts:p.emailPayments,pickupReminders:p.emailPickups,priceAlerts:p.priceAlerts,weeklyReport:p.weeklyReport,marketingEmails:p.marketingEmails})}).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load profile settings'))},[]);
 
   const toggle = (group: 'notifications' | 'security', key: string) => {
     if (group === 'notifications') {
-      setNotifications((s) => ({ ...s, [key]: !s[key as keyof typeof s] }));
+      const next={...notifications,[key]:!notifications[key as keyof typeof notifications]};setNotifications(next);
+      const payload={...storedPreferences,emailOrders:next.orderUpdates,emailPayments:next.paymentAlerts,emailPickups:next.pickupReminders,priceAlerts:next.priceAlerts,weeklyReport:next.weeklyReport,marketingEmails:next.marketingEmails};
+      buyerApi.updatePreferences(payload).then(setStoredPreferences).catch(e=>{setNotifications(notifications);toast.error(e instanceof Error?e.message:'Unable to save notification preference')});
     } else {
-      setSecurity((s) => ({ ...s, [key]: !s[key as keyof typeof s] }));
+      toast.info('This security option requires the production identity provider and is not active yet');
     }
   };
+  const updatePassword=async()=>{if(!password.current)return toast.error('Current password is required');if(password.next.length<8)return toast.error('New password must be at least 8 characters');if(password.next!==password.confirm)return toast.error('Passwords do not match');try{await buyerApi.changePassword({currentPassword:password.current,newPassword:password.next});setPassword({current:'',next:'',confirm:''});toast.success('Password updated; other sessions were signed out')}catch(e){toast.error(e instanceof Error?e.message:'Unable to update password')}};
 
   return (
     <div>
@@ -672,19 +681,19 @@ function SettingsTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="label-text">Current Password</label>
-            <input className="input-field" type="password" placeholder="••••••••" />
+            <input className="input-field" type="password" placeholder="••••••••" value={password.current} onChange={e=>setPassword(p=>({...p,current:e.target.value}))} />
           </div>
           <div />
           <div>
             <label className="label-text">New Password</label>
-            <input className="input-field" type="password" placeholder="Min. 8 characters" />
+            <input className="input-field" type="password" placeholder="Min. 8 characters" value={password.next} onChange={e=>setPassword(p=>({...p,next:e.target.value}))} />
           </div>
           <div>
             <label className="label-text">Confirm New Password</label>
-            <input className="input-field" type="password" placeholder="Re-enter new password" />
+            <input className="input-field" type="password" placeholder="Re-enter new password" value={password.confirm} onChange={e=>setPassword(p=>({...p,confirm:e.target.value}))} />
           </div>
         </div>
-        <button className="btn-primary text-xs px-4 py-2 gap-1.5">
+        <button onClick={updatePassword} className="btn-primary text-xs px-4 py-2 gap-1.5">
           <Lock size={13} />Update Password
         </button>
       </SectionCard>
@@ -696,7 +705,7 @@ function SettingsTab() {
               <div className="text-sm font-medium text-foreground">Deactivate Account</div>
               <div className="text-xs text-muted-foreground mt-0.5">Temporarily suspend your buyer account. You can reactivate anytime.</div>
             </div>
-            <button className="btn-secondary text-xs px-3 py-1.5 text-warning border-warning/30 hover:bg-warning/5">
+            <button onClick={()=>toast.info('Account deactivation requires support approval before production enablement')} className="btn-secondary text-xs px-3 py-1.5 text-warning border-warning/30 hover:bg-warning/5">
               Deactivate
             </button>
           </div>
@@ -705,7 +714,7 @@ function SettingsTab() {
               <div className="text-sm font-medium text-red-700">Delete Account</div>
               <div className="text-xs text-red-500 mt-0.5">Permanently delete your account and all associated data. This cannot be undone.</div>
             </div>
-            <button className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors font-medium">
+            <button onClick={()=>toast.info('Account deletion requests must be handled by TUCOR support')} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors font-medium">
               Delete Account
             </button>
           </div>

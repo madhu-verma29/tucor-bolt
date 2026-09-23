@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { buyerApi, uploadBuyerDocument } from '@/lib/buyer-api';
-import { getSession } from '@/lib/auth-api';
+import { buyerApi, downloadBuyerDocument, uploadBuyerDocument } from '@/lib/buyer-api';
 import { toast } from 'sonner';
 import {
   CheckCircle2, Clock, AlertCircle, XCircle, RefreshCw, Upload,
@@ -34,11 +33,12 @@ const statusConfig: Record<DocStatus, { cls: string; icon: React.ReactNode; labe
 };
 
 export default function BuyerVerificationSection() {
-  const [expandedDoc, setExpandedDoc] = useState<string | null>(null); const [docs,setDocs]=useState<any[]>([]);const fileRef=useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState('');const load=()=>buyerApi.documents().then(setDocs).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load documents'));useEffect(()=>{load()},[]);const mapped:ComplianceDoc[]=REQUIRED_DOCS.map(d=>{const x=docs.find(v=>v.type===d.id);return {...d,status:!x?'Not Submitted':x.status==='VERIFIED'?'Verified':x.status==='REJECTED'?'Rejected':'Pending',submittedAt:x?.uploadedAt?.slice(0,10)}});const upload=(type:string)=>{setUploadType(type);fileRef.current?.click()};const onFile=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{await uploadBuyerDocument(uploadType,f);toast.success('Document uploaded');await load()}catch(err){toast.error(err instanceof Error?err.message:'Upload failed')}finally{e.target.value=''}};const download=async(type:string)=>{const d=docs.find(x=>x.type===type);if(!d)return;const s=getSession();const base=(process.env.NEXT_PUBLIC_API_BASE_URL||'http://localhost:8080').replace(/\/$/,'');const res=await fetch(base+'/api/buyer/documents/'+d.id+'/download',{headers:{Authorization:`Bearer ${s?.accessToken||''}`}});if(!res.ok){toast.error('Download failed');return}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=d.name;a.click();URL.revokeObjectURL(url)};
+  const [expandedDoc, setExpandedDoc] = useState<string | null>(null); const [docs,setDocs]=useState<Awaited<ReturnType<typeof buyerApi.documents>>>([]);const fileRef=useRef<HTMLInputElement>(null);const [uploadType,setUploadType]=useState('');const load=()=>buyerApi.documents().then(setDocs).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load documents'));useEffect(()=>{load()},[]);const mapped:ComplianceDoc[]=REQUIRED_DOCS.map(d=>{const x=docs.find(v=>v.type===d.id);return {...d,status:!x?'Not Submitted':x.expiresAt&&new Date(x.expiresAt)<new Date()?'Expired':x.status==='VERIFIED'?'Verified':x.status==='REJECTED'?'Rejected':'Pending',submittedAt:x?.uploadedAt?.slice(0,10),expiresAt:x?.expiresAt,rejectionReason:x?.rejectionReason}});const upload=(type:string)=>{setUploadType(type);fileRef.current?.click()};const onFile=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{await uploadBuyerDocument(uploadType,f);toast.success('Document uploaded');await load()}catch(err){toast.error(err instanceof Error?err.message:'Upload failed')}finally{e.target.value=''}};const download=async(type:string)=>{const d=docs.find(x=>x.type===type);if(!d)return;try{const blob=await downloadBuyerDocument(d.id);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=d.name;a.click();URL.revokeObjectURL(url)}catch(err){toast.error(err instanceof Error?err.message:'Download failed')}};
 
-  const verified = mapped.filter((d) => d.status === 'Verified').length;
+  const requiredDocuments = mapped.filter((d) => d.required);
+  const verified = requiredDocuments.filter((d) => d.status === 'Verified').length;
   const total = mapped.filter((d) => d.required).length;
-  const overallStatus: OverallStatus = verified >= total ? 'verified' : 'under_review';
+  const overallStatus: OverallStatus = verified === total ? 'verified' : requiredDocuments.some(d=>d.status==='Rejected'||d.status==='Expired') ? 'rejected' : requiredDocuments.every(d=>d.status==='Not Submitted') ? 'pending' : 'under_review';
 
   const overallConfig = {
     verified: { label: 'Fully Verified', cls: 'bg-success/10 border-success/30 text-success', icon: <ShieldCheck size={20} className="text-success" /> },
