@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, Clock, CheckCircle2, Truck, AlertCircle, XCircle } from 'lucide-react';
@@ -81,7 +82,7 @@ function getStatusIcon(status: Order['status']) {
 export default function OrdersSection() {
   const [orderItems,setOrderItems]=useState<Order[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  useEffect(()=>{sellerApi.orders().then(items=>{setOrderItems(items);setExpandedId(items[0]?.id||null)}).catch(()=>setOrderItems([]))},[]);
+  useEffect(()=>{sellerApi.orders().then(items=>{setOrderItems(items);setExpandedId(items[0]?.id||null)}).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
 
   return (
     <div className="flex flex-col gap-5">

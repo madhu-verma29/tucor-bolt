@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import { Truck, Calendar, User, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -53,7 +54,7 @@ function getPickupStatusBadge(status: Pickup['status']) {
 export default function PickupsSection() {
   const [pickupItems,setPickupItems]=useState<Pickup[]>([]);
   const [activePickupId, setActivePickupId] = useState<string | null>(null);
-  useEffect(()=>{sellerApi.pickups().then(setPickupItems).catch(()=>setPickupItems([]))},[]);
+  useEffect(()=>{sellerApi.pickups().then(setPickupItems).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const nextScheduled=pickupItems.find(p=>p.status==='Scheduled');
 
   return (

@@ -88,6 +88,7 @@ export default function CreateListingSection({ listingId, onBack }: Props) {
 
   const [docs, setDocs] = useState<UploadedDoc[]>([]);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const savedListingId = React.useRef<string | undefined>(listingId);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'saving' | 'submitting' | 'success'>('idle');
   const [dragOver, setDragOver] = useState(false);
 
@@ -123,13 +124,13 @@ export default function CreateListingSection({ listingId, onBack }: Props) {
 
   const handleSaveDraft = async () => {
     setSubmitStatus('saving');
-    try{const saved=isEdit?await sellerApi.updateListing(listingId!,payload('Draft')):await sellerApi.createListing(payload('Draft'));await persistDocuments(saved.id);toast.success('Draft saved');onBack()}catch(e){toast.error(e instanceof Error?e.message:'Unable to save draft');setSubmitStatus('idle')}
+    try{const saved=savedListingId.current?await sellerApi.updateListing(savedListingId.current,payload('Draft')):await sellerApi.createListing(payload('Draft'));savedListingId.current=saved.id;await persistDocuments(saved.id);toast.success('Draft saved');onBack()}catch(e){toast.error(e instanceof Error?e.message:'Unable to save draft');setSubmitStatus('idle')}
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
     setSubmitStatus('submitting');
-    try{const saved=isEdit?await sellerApi.updateListing(listingId!,payload('Pending Verification')):await sellerApi.createListing(payload('Pending Verification'));await persistDocuments(saved.id);setSubmitStatus('success')}catch(e){toast.error(e instanceof Error?e.message:'Unable to submit listing');setSubmitStatus('idle')}
+    try{const saved=savedListingId.current?await sellerApi.updateListing(savedListingId.current,payload('Pending Verification')):await sellerApi.createListing(payload('Pending Verification'));savedListingId.current=saved.id;await persistDocuments(saved.id);setSubmitStatus('success')}catch(e){toast.error(e instanceof Error?e.message:'Unable to submit listing');setSubmitStatus('idle')}
   };
 
   const processFiles = (files: FileList | null) => {
@@ -150,7 +151,7 @@ export default function CreateListingSection({ listingId, onBack }: Props) {
     });
   };
 
-  const removeDoc = async (id: string) => {const doc=docs.find(d=>d.id===id);if(doc?.persisted&&listingId){try{await sellerApi.deleteListingDocument(listingId,id)}catch(e){toast.error(e instanceof Error?e.message:'Unable to remove document');return}}setDocs((prev) => prev.filter((d) => d.id !== id));};
+  const removeDoc = async (id: string) => {const doc=docs.find(d=>d.id===id);if(doc?.persisted&&savedListingId.current){try{await sellerApi.deleteListingDocument(savedListingId.current,id)}catch(e){toast.error(e instanceof Error?e.message:'Unable to remove document');return}}setDocs((prev) => prev.filter((d) => d.id !== id));};
 
   if (submitStatus === 'success') {
     return (

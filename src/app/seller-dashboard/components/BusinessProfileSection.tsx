@@ -271,7 +271,7 @@ export default function BusinessProfileSection() {
   const [activeTab, setActiveTab] = useState('company');
   const [profile,setProfile]=useState<SellerProfile|null>(null);
   const [dashboard,setDashboard]=useState<SellerDashboard|null>(null);
-  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{});sellerApi.dashboard().then(setDashboard).catch(()=>{})},[]);
+  useEffect(()=>{sellerApi.profile().then(setProfile).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'));sellerApi.dashboard().then(setDashboard).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
 
   return (
     <div className="flex flex-col gap-6">

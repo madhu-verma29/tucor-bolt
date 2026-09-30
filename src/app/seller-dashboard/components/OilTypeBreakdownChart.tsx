@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -34,7 +35,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 }
 
 export default function OilTypeBreakdownChart() {
-  const [oilTypes,setOilTypes]=useState<{oilType:string;liters:number;color:string}[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setOilTypes(x.oilTypes)).catch(()=>setOilTypes([]))},[]);
+  const [oilTypes,setOilTypes]=useState<{oilType:string;liters:number;color:string}[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setOilTypes(x.oilTypes)).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   return (
     <div className="card p-5 h-full">
       <div className="mb-5">

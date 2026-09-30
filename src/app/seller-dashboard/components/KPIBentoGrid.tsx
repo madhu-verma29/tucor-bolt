@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -103,7 +104,7 @@ interface Props {
 }
 
 export default function KPIBentoGrid({ onNavigate }: Props) {
-  const [metrics,setMetrics]=useState<SellerDashboard|null>(null);useEffect(()=>{sellerApi.dashboard().then(setMetrics).catch(()=>{})},[]);
+  const [metrics,setMetrics]=useState<SellerDashboard|null>(null);useEffect(()=>{sellerApi.dashboard().then(setMetrics).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   // Grid plan: 6 cards → grid-cols-2 md:grid-cols-3 xl:grid-cols-6
   // Row 1 (xl): hero spans 2 cols + 4 regular = 6 cols total
   // Row 1 (md): 3 per row × 2 rows

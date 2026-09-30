@@ -11,8 +11,8 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/buyer/bank-accounts")
 public class BuyerAccountController {
- private final BuyerBankAccountRepository accounts;
- public BuyerAccountController(BuyerBankAccountRepository accounts){this.accounts=accounts;}
+ private final BuyerBankAccountRepository accounts;private final in.tucor.api.auth.UserRepository users;
+ public BuyerAccountController(BuyerBankAccountRepository accounts,in.tucor.api.auth.UserRepository users){this.accounts=accounts;this.users=users;}
 
  public record Account(String id,String bankName,String accountType,String accountHolderName,String accountNumber,String ifsc,String branch,boolean verified,boolean primary){}
  public record Create(@NotBlank @Size(max=120) String bankName,
@@ -28,7 +28,7 @@ public class BuyerAccountController {
  @PostMapping
  @Transactional
  public Account add(Authentication authentication,@Valid @RequestBody Create request){
-  UUID buyerId=buyerId(authentication);String number=request.accountNumber().trim();
+  UUID buyerId=buyerId(authentication);users.findByIdForUpdate(buyerId).orElseThrow();String number=request.accountNumber().trim();
   if(accounts.existsByBuyerIdAndAccountNumber(buyerId,number))throw new IllegalArgumentException("This bank account is already linked");
   BuyerBankAccount account=new BuyerBankAccount();account.buyerId=buyerId;account.bankName=request.bankName().trim();
   account.accountType=normalizeAccountType(request.accountType());account.accountHolderName=request.accountHolderName().trim();
@@ -41,7 +41,7 @@ public class BuyerAccountController {
  @DeleteMapping("/{id}")
  @Transactional
  public void delete(Authentication authentication,@PathVariable UUID id){
-  UUID buyerId=buyerId(authentication);BuyerBankAccount account=accounts.findByIdAndBuyerId(id,buyerId).orElseThrow(()->new NoSuchElementException("Bank account not found"));
+  UUID buyerId=buyerId(authentication);users.findByIdForUpdate(buyerId).orElseThrow();BuyerBankAccount account=accounts.findByIdAndBuyerId(id,buyerId).orElseThrow(()->new NoSuchElementException("Bank account not found"));
   boolean wasPrimary=account.primary;accounts.delete(account);accounts.flush();
   if(wasPrimary){accounts.findByBuyerIdOrderByCreatedAtAsc(buyerId).stream().findFirst().ifPresent(next->{next.primary=true;accounts.save(next);});}
  }
@@ -49,7 +49,7 @@ public class BuyerAccountController {
  @PutMapping("/{id}/primary")
  @Transactional
  public Account primary(Authentication authentication,@PathVariable UUID id){
-  UUID buyerId=buyerId(authentication);accounts.findByIdAndBuyerId(id,buyerId).orElseThrow(()->new NoSuchElementException("Bank account not found"));
+  UUID buyerId=buyerId(authentication);users.findByIdForUpdate(buyerId).orElseThrow();accounts.findByIdAndBuyerId(id,buyerId).orElseThrow(()->new NoSuchElementException("Bank account not found"));
   accounts.clearPrimary(buyerId);BuyerBankAccount target=accounts.findByIdAndBuyerId(id,buyerId).orElseThrow();target.primary=true;return dto(accounts.save(target));
  }
 

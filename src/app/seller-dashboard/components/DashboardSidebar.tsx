@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -80,7 +81,7 @@ export default function DashboardSidebar({
   onNavigate,
 }: Props) {
   const groups = [...new Set(navItems.map((n) => n.group))];
-  const [profile,setProfile]=useState<SellerProfile|null>(null);useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{})},[]);
+  const [profile,setProfile]=useState<SellerProfile|null>(null);useEffect(()=>{sellerApi.profile().then(setProfile).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
 
   const sidebarContent = (
     <div className="flex flex-col h-full">

@@ -1,0 +1,11 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+  mail:
+    properties:
+      mail.smtp.starttls.required: true
+      mail.smtp.starttls.enable: true
+tucor:
+  upload-dir: ${UPLOAD_DIR}

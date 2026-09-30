@@ -22,9 +22,10 @@ public class BuyerDocumentController {
  private static final Set<String> TYPES=Set.of("GST","PAN","FSSAI_OR_REGISTRATION","ADDRESS_PROOF","BANK_PROOF","DIRECTOR_KYC","END_USE_DECLARATION","POLLUTION_CONTROL","ISO","TRADE_LICENSE");
  private final RegistrationDocumentRepository documents;
  private final Path root;
+ private final in.tucor.api.storage.DocumentFiles files;
 
  public BuyerDocumentController(RegistrationDocumentRepository documents,@Value("${tucor.upload-dir:./uploads/registration}") String directory) throws IOException {
-  this.documents=documents;this.root=Paths.get(directory).toAbsolutePath().normalize();Files.createDirectories(root);
+  this.files=new in.tucor.api.storage.DocumentFiles(directory);this.documents=documents;this.root=Paths.get(directory).toAbsolutePath().normalize();Files.createDirectories(root);
  }
 
  public record Doc(String id,String name,String type,String status,long sizeBytes,String uploadedAt,String expiresAt,String rejectionReason,String verifiedAt){}
@@ -37,18 +38,12 @@ public class BuyerDocumentController {
  public Doc upload(Authentication authentication,@RequestParam String documentType,@RequestPart("file") MultipartFile file) throws IOException {
   UUID userId=userId(authentication);String type=documentType.trim().toUpperCase(Locale.ROOT);
   if(!TYPES.contains(type))throw new IllegalArgumentException("Unsupported document type");
-  FileKind kind=validate(file);RegistrationDocument document=documents.findByUserIdAndDocumentType(userId,type).orElseGet(RegistrationDocument::new);
-  String oldStored=document.storedFilename;String stored=userId+"-"+type+"-"+UUID.randomUUID()+kind.extension;
-  Path target=safePath(stored);Path temporary=safePath(".upload-"+UUID.randomUUID()+".tmp");
-  try(InputStream input=file.getInputStream()){Files.copy(input,temporary,StandardCopyOption.REPLACE_EXISTING);}
-  try{Files.move(temporary,target,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(temporary,target,StandardCopyOption.REPLACE_EXISTING);}
-  try{
-   document.userId=userId;document.documentType=type;document.originalFilename=safeOriginalName(file.getOriginalFilename(),kind.extension);
-   document.storedFilename=stored;document.contentType=kind.contentType;document.sizeBytes=file.getSize();document.status="PENDING_REVIEW";
-   document.rejectionReason=null;document.verifiedBy=null;document.verifiedAt=null;document.expiresAt=null;
-   document=documents.save(document);
-  }catch(RuntimeException e){Files.deleteIfExists(target);throw e;}
-  if(oldStored!=null&&!oldStored.equals(stored))Files.deleteIfExists(safePath(oldStored));
+  RegistrationDocument document=documents.findByUserIdAndDocumentType(userId,type).orElseGet(RegistrationDocument::new);
+  String oldStored=document.storedFilename;var stored=files.store(file,MAX_SIZE);
+  document.userId=userId;document.documentType=type;document.originalFilename=stored.name();
+  document.storedFilename=stored.filename();document.contentType=stored.contentType();document.sizeBytes=stored.size();document.status="PENDING_REVIEW";
+  document.rejectionReason=null;document.verifiedBy=null;document.verifiedAt=null;document.expiresAt=null;
+  document=documents.save(document);files.deleteAfterCommit(oldStored);
   return dto(document);
  }
 
@@ -66,22 +61,12 @@ public class BuyerDocumentController {
  @Transactional(rollbackFor=Exception.class)
  public void delete(Authentication authentication,@PathVariable UUID id) throws IOException {
   UUID userId=userId(authentication);RegistrationDocument document=documents.findById(id).filter(x->x.userId.equals(userId)).orElseThrow(()->new NoSuchElementException("Document not found"));
-  documents.delete(document);Files.deleteIfExists(safePath(document.storedFilename));
+  documents.delete(document);files.deleteAfterCommit(document.storedFilename);
  }
 
- private FileKind validate(MultipartFile file) throws IOException {
-  if(file.isEmpty()||file.getSize()>MAX_SIZE)throw new IllegalArgumentException("File must be between 1 byte and 5MB");
-  byte[] header;
-  try(InputStream input=file.getInputStream()){header=input.readNBytes(8);}
-  if(startsWith(header,new byte[]{0x25,0x50,0x44,0x46,0x2D}))return new FileKind("application/pdf",".pdf");
-  if(startsWith(header,new byte[]{(byte)0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A}))return new FileKind("image/png",".png");
-  if(startsWith(header,new byte[]{(byte)0xFF,(byte)0xD8,(byte)0xFF}))return new FileKind("image/jpeg",".jpg");
-  throw new IllegalArgumentException("File content must be PDF, JPEG or PNG");
- }
- private boolean startsWith(byte[] value,byte[] prefix){if(value.length<prefix.length)return false;for(int i=0;i<prefix.length;i++)if(value[i]!=prefix[i])return false;return true;}
- private Path safePath(String stored){Path path=root.resolve(stored).normalize();if(!path.startsWith(root))throw new IllegalArgumentException("Invalid document path");return path;}
- private String safeOriginalName(String name,String fallbackExtension){String cleaned=Optional.ofNullable(name).orElse("document"+fallbackExtension).replace('\r','_').replace('\n','_').replace('"','_');return cleaned.isBlank()?"document"+fallbackExtension:cleaned;}
+ private Path safePath(String stored){return files.path(stored);}
+ private String safeOriginalName(String name,String fallbackExtension){return in.tucor.api.storage.DocumentFiles.safeName(name);}
  private UUID userId(Authentication authentication){return UUID.fromString(authentication.getName());}
- private Doc dto(RegistrationDocument document){return new Doc(document.id.toString(),document.originalFilename,document.documentType,document.status,document.sizeBytes,document.createdAt.toString(),document.expiresAt==null?null:document.expiresAt.toString(),document.rejectionReason,document.verifiedAt==null?null:document.verifiedAt.toString());}
+ private Doc dto(RegistrationDocument document){return new Doc(document.id.toString(),document.originalFilename,document.documentType,document.expiresAt!=null&&document.expiresAt.isBefore(LocalDate.now())?"EXPIRED":document.status,document.sizeBytes,document.createdAt.toString(),document.expiresAt==null?null:document.expiresAt.toString(),document.rejectionReason,document.verifiedAt==null?null:document.verifiedAt.toString());}
  private record FileKind(String contentType,String extension){}
 }

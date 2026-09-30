@@ -1,14 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useDashboardSession } from '@/lib/use-dashboard-session';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardTopbar from './DashboardTopbar';
 import DashboardContent from './DashboardContent';
 
 export default function DashboardLayout() {
+  const authorized = useDashboardSession('SELLER');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+
+  if (!authorized) return null;
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

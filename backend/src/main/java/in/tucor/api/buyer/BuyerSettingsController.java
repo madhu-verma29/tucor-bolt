@@ -42,7 +42,7 @@ public class BuyerSettingsController {
                         @Pattern(regexp="^$|^[6-9][0-9]{9}$") String altPhone,@Email @Size(max=255) String altEmail,
                         @Size(max=2000) String warehouseAddress,@Pattern(regexp="^$|^[6-9][0-9]{9}$") String warehouseContact,
                         @Size(max=160) String warehouseHours){}
- public record PasswordChange(@NotBlank String currentPassword,@Size(min=8,max=72) String newPassword){}
+ public record PasswordChange(@NotBlank String currentPassword,@NotBlank @Size(min=8,max=72) String newPassword){}
  public record Preferences(boolean emailOrders,boolean emailPickups,boolean emailPayments,boolean emailKyc,boolean smsOrders,boolean smsPickups,
                            boolean whatsappUpdates,boolean autoReorder,boolean priceAlerts,boolean weeklyReport,
                            boolean sustainabilityReport,boolean compactView,
@@ -120,7 +120,7 @@ public class BuyerSettingsController {
   User u=user(authentication);
   if(!encoder.matches(request.currentPassword(),u.passwordHash))throw new IllegalArgumentException("Current password is incorrect");
   if(encoder.matches(request.newPassword(),u.passwordHash))throw new IllegalArgumentException("New password must be different from the current password");
-  u.passwordHash=encoder.encode(request.newPassword());u.failedLoginAttempts=0;u.lockedUntil=null;users.save(u);
+  u.tokenVersion++;u.passwordHash=encoder.encode(request.newPassword());u.failedLoginAttempts=0;u.lockedUntil=null;users.save(u);
   Instant now=Instant.now();var active=refreshTokens.findByUserIdAndRevokedAtIsNull(u.id);
   active.forEach(t->t.revokedAt=now);refreshTokens.saveAll(active);
  }

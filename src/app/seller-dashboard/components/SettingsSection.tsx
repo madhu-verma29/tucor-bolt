@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Settings, Bell, Shield, CreditCard, User, Eye, EyeOff, Save, Smartphone, Mail, CheckCircle2, Undo2, X, AlertCircle } from 'lucide-react';
@@ -83,7 +84,7 @@ export default function SettingsSection() {
   const [passwordError, setPasswordError] = useState('');
   const [gstNumber,setGstNumber]=useState('');
   const [bank,setBank]=useState<SellerBankAccount|null>(null);
-  useEffect(()=>{Promise.all([sellerApi.settingsAccount(),sellerApi.notificationSettings(),sellerApi.bankAccount()]).then(([a,n,b])=>{const account={ownerName:a.fullName||'',email:a.email||'',phone:a.phone||''};setAccountForm(account);setSavedAccountForm(account);setGstNumber(a.gstNumber||'');setNotifSettings(n);setSavedNotifSettings(n);setBank(b)}).catch(()=>{})},[]);
+  useEffect(()=>{Promise.all([sellerApi.settingsAccount(),sellerApi.notificationSettings(),sellerApi.bankAccount()]).then(([a,n,b])=>{const account={ownerName:a.fullName||'',email:a.email||'',phone:a.phone||''};setAccountForm(account);setSavedAccountForm(account);setGstNumber(a.gstNumber||'');setNotifSettings(n);setSavedNotifSettings(n);setBank(b)}).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'account', label: 'Account', icon: User },

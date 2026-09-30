@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import KPIBentoGrid from './KPIBentoGrid';
@@ -14,7 +15,7 @@ interface Props {
 }
 
 export default function OverviewSection({ onNavigate }: Props) {
-  const [name,setName]=useState('Seller');useEffect(()=>{sellerApi.profile().then(p=>setName(p.primaryContact||p.businessName||'Seller')).catch(()=>{})},[]);
+  const [name,setName]=useState('Seller');useEffect(()=>{sellerApi.profile().then(p=>setName(p.primaryContact||p.businessName||'Seller')).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   return (
     <div className="flex flex-col gap-6">
       {/* Page header */}

@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, Clock, CheckCircle2, Banknote, ArrowDownToLine, Download, ChevronDown, ChevronUp, X, Building2, AlertCircle, Calendar,  } from 'lucide-react';
@@ -206,13 +207,13 @@ export default function SellerEarningsSection() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('All');
 
-  useEffect(()=>{Promise.all([sellerApi.payments(),sellerApi.orders(),sellerApi.bankAccount(),sellerApi.withdrawals()]).then(([p,o,b,w])=>{setPayments(p);setOrders(o);setBank(b);setWithdrawn(w.filter(x=>x.status!=='Rejected').reduce((s,x)=>s+x.amount,0))}).catch(()=>{})},[]);
-  const settlements:Settlement[]=payments.map((p)=>{const o=orders.find(x=>x.id===p.orderId);const gross=p.amount;const fee=Math.round(gross*.05);return{id:p.id,orderId:p.orderId,invoiceNo:p.invoiceNumber||'—',volume:o?.volumeLiters||0,pricePerLiter:o&&o.volumeLiters?Math.round(gross/o.volumeLiters):0,grossAmount:gross,platformFee:fee,netAmount:gross-fee,status:p.status==='Failed'||p.status==='Disputed'?'On Hold':p.status,settledDate:p.settledDate||null,dueDate:p.dueDate,reference:p.reference||'—'}});
+  useEffect(()=>{Promise.all([sellerApi.payments(),sellerApi.orders(),sellerApi.bankAccount(),sellerApi.withdrawals()]).then(([p,o,b,w])=>{setPayments(p);setOrders(o);setBank(b);setWithdrawn(w.filter(x=>x.status!=='Rejected').reduce((s,x)=>s+x.amount,0))}).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
+  const settlements:Settlement[]=payments.map((p)=>{const o=orders.find(x=>x.id===p.orderId);const gross=p.amount;const fee=0;return{id:p.id,orderId:p.orderId,invoiceNo:p.invoiceNumber||'—',volume:o?.volumeLiters||0,pricePerLiter:o&&o.volumeLiters?Math.round(gross/o.volumeLiters):0,grossAmount:gross,platformFee:fee,netAmount:gross-fee,status:p.status==='Failed'||p.status==='Disputed'?'On Hold':p.status,settledDate:p.settledDate||null,dueDate:p.dueDate,reference:p.reference||'—'}});
   const pendingPayouts:PendingPayout[]=settlements.filter(s=>s.status!=='Settled').map(s=>({id:s.id,orderId:s.orderId,description:`UCO Collection — ${s.volume} L`,amount:s.netAmount,expectedDate:s.dueDate,stage:s.status}));
   const totalLifetime = settlements.filter(s=>s.status==='Settled').reduce((a,s)=>a+s.netAmount,0);
-  const totalSettledThisMonth = totalLifetime;
+  const totalSettledThisMonth = settlements.filter(s=>s.status==='Settled'&&s.settledDate?.slice(0,7)===new Date().toISOString().slice(0,7)).reduce((a,s)=>a+s.netAmount,0);
   const totalPending = pendingPayouts.reduce((acc, p) => acc + p.amount, 0);
-  const availableBalance = Math.max(0,totalSettledThisMonth-withdrawn);
+  const availableBalance = Math.max(0,totalLifetime-withdrawn);
 
   const statusFilters = ['All', 'Settled', 'Processing', 'Pending', 'On Hold'];
   const filtered = filterStatus === 'All' ? settlements : settlements.filter((s) => s.status === filterStatus);

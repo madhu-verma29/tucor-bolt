@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import { CreditCard, ArrowRight, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
@@ -9,7 +10,7 @@ interface Props {
 }
 
 export default function PaymentSummaryPanel({ onNavigate }: Props) {
-  const [paymentItems,setPaymentItems]=useState<SellerPayment[]>([]);useEffect(()=>{sellerApi.payments().then(setPaymentItems).catch(()=>setPaymentItems([]))},[]);
+  const [paymentItems,setPaymentItems]=useState<SellerPayment[]>([]);useEffect(()=>{sellerApi.payments().then(setPaymentItems).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const totalPending = paymentItems
     .filter((p) => p.status === 'Pending' || p.status === 'Processing')
     .reduce((sum, p) => sum + p.amount, 0);

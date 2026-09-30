@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, PanelLeftClose, Bell, Search, Plus, ChevronDown, LogOut, User, Settings } from 'lucide-react';
@@ -21,7 +22,7 @@ export default function DashboardTopbar({ onToggleSidebar, onMobileMenuOpen, sid
   const profileRef = useRef<HTMLDivElement>(null);
   const [profile,setProfile]=useState<SellerProfile|null>(null);
   const [notifications,setNotifications]=useState<(SellerNotification&{time:string;unread:boolean})[]>([]);
-  useEffect(()=>{sellerApi.profile().then(setProfile).catch(()=>{});sellerApi.notifications().then(x=>setNotifications(x.slice(0,5).map(n=>({...n,time:new Date(n.createdAt).toLocaleString('en-IN'),unread:!n.read})))).catch(()=>{})},[]);
+  useEffect(()=>{sellerApi.profile().then(setProfile).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'));sellerApi.notifications().then(x=>setNotifications(x.slice(0,5).map(n=>({...n,time:new Date(n.createdAt).toLocaleString('en-IN'),unread:!n.read})))).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

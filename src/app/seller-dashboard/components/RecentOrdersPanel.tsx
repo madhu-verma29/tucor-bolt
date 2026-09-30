@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Clock, CheckCircle2, Truck, AlertCircle, XCircle } from 'lucide-react';
@@ -28,7 +29,7 @@ interface Props {
 }
 
 export default function RecentOrdersPanel({ onNavigate }: Props) {
-  const [orderItems,setOrderItems]=useState<Order[]>([]);useEffect(()=>{sellerApi.orders().then(x=>setOrderItems(x.slice(0,5))).catch(()=>setOrderItems([]))},[]);
+  const [orderItems,setOrderItems]=useState<Order[]>([]);useEffect(()=>{sellerApi.orders().then(x=>setOrderItems(x.slice(0,5))).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">

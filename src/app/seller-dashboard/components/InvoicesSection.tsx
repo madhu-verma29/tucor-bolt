@@ -19,7 +19,7 @@ const statusConfig = {
 export default function InvoicesSection() {
   const [payments,setPayments]=useState<SellerPayment[]>([]);
   const [search, setSearch] = useState('');
-  useEffect(()=>{sellerApi.payments().then(setPayments).catch(()=>setPayments([]))},[]);
+  useEffect(()=>{sellerApi.payments().then(setPayments).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const invoiceData=payments.map((p)=>({...p,description:'UCO Collection Settlement',period:new Date(p.settledDate||p.dueDate).toLocaleDateString('en-IN',{month:'short',year:'numeric'}),type:'Settlement Invoice' as const}));
 
   const filtered = invoiceData.filter(
@@ -130,7 +130,7 @@ export default function InvoicesSection() {
                       <button
                         onClick={() => exportInvoices([inv],`${inv.invoiceNumber||inv.id}.csv`)}
                         className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors duration-150"
-                        title="Download PDF"
+                        title="Download CSV"
                       >
                         <Download size={14} />
                       </button>

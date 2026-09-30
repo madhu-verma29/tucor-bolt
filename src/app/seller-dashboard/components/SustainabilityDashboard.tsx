@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import { Leaf, Wind, Recycle, Award, Info } from 'lucide-react';
@@ -8,7 +9,7 @@ import Icon from '@/components/ui/AppIcon';
 
 
 export default function SustainabilityDashboard() {
-  const [metrics,setMetrics]=useState<SellerDashboard|null>(null);useEffect(()=>{sellerApi.dashboard().then(setMetrics).catch(()=>{})},[]);
+  const [metrics,setMetrics]=useState<SellerDashboard|null>(null);useEffect(()=>{sellerApi.dashboard().then(setMetrics).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const totalCO2 = metrics?.co2OffsetKg||0;
   const totalCollections = metrics?.collectionsCompleted||0;
 

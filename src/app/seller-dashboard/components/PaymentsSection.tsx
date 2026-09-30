@@ -21,7 +21,7 @@ function getPaymentStatusConfig(status: Payment['status']) {
 
 export default function PaymentsSection() {
   const [paymentItems,setPaymentItems]=useState<Payment[]>([]);
-  useEffect(()=>{sellerApi.payments().then(setPaymentItems).catch(()=>setPaymentItems([]))},[]);
+  useEffect(()=>{sellerApi.payments().then(setPaymentItems).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const totalEarned = paymentItems.filter((p) => p.status === 'Settled').reduce((s, p) => s + p.amount, 0);
   const totalPending = paymentItems.filter((p) => ['Pending', 'Processing'].includes(p.status)).reduce((s, p) => s + p.amount, 0);
 

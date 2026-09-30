@@ -225,7 +225,7 @@ function DocRow({ icon, title, number, status, expiry, submittedOn, note, onUplo
 
 function GSTFSSAITab() {
   const [documents,setDocuments]=useState<SellerDocument[]>([]);const [profile,setProfile]=useState<any>(null);const [bankLinked,setBankLinked]=useState(false);
-  const load=()=>Promise.all([sellerApi.documents(),sellerApi.profile(),sellerApi.bankAccount()]).then(([d,p,b])=>{setDocuments(d);setProfile(p);setBankLinked(!!b.accountNumber)});useEffect(()=>{load().catch(()=>{})},[]);
+  const load=()=>Promise.all([sellerApi.documents(),sellerApi.profile(),sellerApi.bankAccount()]).then(([d,p,b])=>{setDocuments(d);setProfile(p);setBankLinked(!!b.accountNumber)});useEffect(()=>{load().catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const documentFor=(type:string)=>documents.find(d=>d.type===type);const status=(type:string):VerificationStatus=>{const d=documentFor(type);return !d?'not_submitted':d.status==='VERIFIED'?'verified':d.status==='REJECTED'?'rejected':'under_review'};
   const upload=(type:string)=>{const input=document.createElement('input');input.type='file';input.accept='.pdf,.png,.jpg,.jpeg';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{await uploadSellerDocument(type,file);await load();toast.success('Document uploaded')}catch(e){toast.error(e instanceof Error?e.message:'Upload failed')}};input.click()};
   const view=async(type:string)=>{const d=documentFor(type);if(!d)return;try{await downloadSellerDocument(d.id,d.name)}catch(e){toast.error(e instanceof Error?e.message:'Download failed')}};
@@ -575,10 +575,10 @@ function SettingsTab() {
   const [confirmPw, setConfirmPw] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [twoFA, setTwoFA] = useState(true);
-  const [loginAlerts, setLoginAlerts] = useState(true);
-  const [autoInvoice, setAutoInvoice] = useState(true);
+  const [loginAlerts, setLoginAlerts] = useState(false);
+  const [autoInvoice, setAutoInvoice] = useState(false);
   const [weeklyReport, setWeeklyReport] = useState(false);
-  useEffect(()=>{sellerApi.preferences().then(p=>{setTwoFA(p.twoFactor);setLoginAlerts(p.loginAlerts);setAutoInvoice(p.autoInvoice);setWeeklyReport(p.weeklyReport)}).catch(()=>{})},[]);
+  useEffect(()=>{sellerApi.preferences().then(p=>{setTwoFA(p.twoFactor);setLoginAlerts(p.loginAlerts);setAutoInvoice(p.autoInvoice);setWeeklyReport(p.weeklyReport)}).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const savePreferences=(next:{twoFactor:boolean;loginAlerts:boolean;autoInvoice:boolean;weeklyReport:boolean})=>sellerApi.updatePreferences(next).catch(e=>toast.error(e instanceof Error?e.message:'Unable to save preference'));
   const changePassword=async()=>{if(newPw.length<8||newPw!==confirmPw){toast.error(newPw!==confirmPw?'Passwords do not match':'New password must be at least 8 characters');return}try{await sellerApi.changePassword({currentPassword:currentPw,newPassword:newPw});setCurrentPw('');setNewPw('');setConfirmPw('');toast.success('Password updated successfully')}catch(e){toast.error(e instanceof Error?e.message:'Unable to update password')}};
 
@@ -622,7 +622,7 @@ function SettingsTab() {
                 <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
               </div>
               <button
-                onClick={() => {const next=!val;set(next);savePreferences({twoFactor:label.startsWith('Two-Factor')?next:twoFA,loginAlerts:label==='Login Alerts'?next:loginAlerts,autoInvoice,weeklyReport})}}
+                disabled title="Not available yet" aria-label={`${label} — not available yet`}
                 className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${val ? 'bg-primary' : 'bg-muted'}`}
               >
                 <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${val ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -645,7 +645,7 @@ function SettingsTab() {
                 <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
               </div>
               <button
-                onClick={() => {const next=!val;set(next);savePreferences({twoFactor:twoFA,loginAlerts,autoInvoice:label==='Auto-generate Invoices'?next:autoInvoice,weeklyReport:label==='Weekly Summary Report'?next:weeklyReport})}}
+                disabled title="Not available yet" aria-label={`${label} — not available yet`}
                 className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${val ? 'bg-primary' : 'bg-muted'}`}
               >
                 <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${val ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -663,14 +663,14 @@ function SettingsTab() {
               <div className="text-sm font-semibold text-foreground">Deactivate Seller Account</div>
               <div className="text-xs text-muted-foreground mt-0.5">Temporarily pause all listings and order activity</div>
             </div>
-            <button className="btn-secondary text-xs px-3 py-1.5 text-warning border-warning/30 hover:bg-warning-bg">Deactivate</button>
+            <button disabled title="Contact TUCOR support to request account deactivation" className="btn-secondary text-xs px-3 py-1.5 text-warning border-warning/30 hover:bg-warning-bg">Deactivate</button>
           </div>
           <div className="flex items-center justify-between p-4 rounded-xl border border-danger/30 bg-danger-bg/50">
             <div>
               <div className="text-sm font-semibold text-danger">Delete Account</div>
               <div className="text-xs text-muted-foreground mt-0.5">Permanently remove your seller account and all associated data</div>
             </div>
-            <button className="btn-danger text-xs px-3 py-1.5 gap-1.5"><Trash2 size={13} />Delete</button>
+            <button disabled title="Contact TUCOR support to request account deletion" className="btn-danger text-xs px-3 py-1.5 gap-1.5"><Trash2 size={13} />Delete</button>
           </div>
         </div>
       </SectionCard>

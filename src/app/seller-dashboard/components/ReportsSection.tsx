@@ -20,7 +20,7 @@ const reportTypes = [
 ];
 
 export default function ReportsSection() {
-  const [monthlyEarnings,setMonthlyEarnings]=useState<SellerTimeline[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setMonthlyEarnings(x.timeline)).catch(()=>setMonthlyEarnings([]))},[]);
+  const [monthlyEarnings,setMonthlyEarnings]=useState<SellerTimeline[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setMonthlyEarnings(x.timeline)).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const [period, setPeriod] = useState<'3m' | '6m' | '12m'>('12m');
 
   const slicedData = period === '3m' ? monthlyEarnings.slice(-3) : period === '6m' ? monthlyEarnings.slice(-6) : monthlyEarnings;

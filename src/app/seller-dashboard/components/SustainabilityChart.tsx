@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -42,7 +43,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export default function SustainabilityChart() {
-  const [timeline,setTimeline]=useState<SellerTimeline[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setTimeline(x.timeline)).catch(()=>setTimeline([]))},[]);
+  const [timeline,setTimeline]=useState<SellerTimeline[]>([]);useEffect(()=>{sellerApi.dashboard().then(x=>setTimeline(x.timeline)).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   return (
     <div className="card p-5">
       <div className="mb-5">

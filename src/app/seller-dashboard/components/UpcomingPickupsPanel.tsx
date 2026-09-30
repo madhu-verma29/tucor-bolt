@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import { Truck, Calendar, ArrowRight } from 'lucide-react';
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export default function UpcomingPickupsPanel({ onNavigate }: Props) {
-  const [pickupItems,setPickupItems]=useState<SellerPickup[]>([]);useEffect(()=>{sellerApi.pickups().then(setPickupItems).catch(()=>setPickupItems([]))},[]);
+  const [pickupItems,setPickupItems]=useState<SellerPickup[]>([]);useEffect(()=>{sellerApi.pickups().then(setPickupItems).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load seller data'))},[]);
   const upcoming = pickupItems.filter((p) => p.status !== 'Completed');
 
   return (
