@@ -208,7 +208,7 @@ export default function AdminSettingsSection() {
     }catch(e){setSectionSaveState('password',{status:'error'});setPasswordError(e instanceof Error?e.message:'Unable to update password');}
   };
 
-  const inviteAdmin=async()=>{const email=window.prompt('Enter the new admin email address');if(!email)return;const name=window.prompt('Enter the admin name')||email.split('@')[0];try{const result=await adminApi.inviteAdmin(email,name);const admins=await adminApi.admins();setAdminUsers(admins);addToast({type:'success',message:`Admin invited. Temporary password: ${result.temporaryPassword}`});}catch(e){addToast({type:'error',message:e instanceof Error?e.message:'Unable to invite admin'});}};
+  const inviteAdmin=async()=>{const email=window.prompt('Enter the new admin email address');if(!email)return;const name=window.prompt('Enter the admin name')||email.split('@')[0];try{const result=await adminApi.inviteAdmin(email,name);const admins=await adminApi.admins();setAdminUsers(admins);addToast({type:'success',message:result.message});}catch(e){addToast({type:'error',message:e instanceof Error?e.message:'Unable to invite admin'});}};
 
   const SaveButton = ({ sectionKey, label, onClick, icon: BtnIcon }: { sectionKey: string; label: string; onClick: () => void; icon: React.ElementType }) => {
     const state = saveState[sectionKey];
@@ -239,7 +239,7 @@ export default function AdminSettingsSection() {
       <ConfirmModal
         open={confirmOpen}
         title="Confirm Platform Changes"
-        message="Changes to platform fee and thresholds will affect all future transactions. This action cannot be automatically undone."
+        message="Save admin display preferences? Operational pricing and approval policies are not connected."
         onConfirm={() => { setConfirmOpen(false); executePlatformSave(); }}
         onCancel={() => setConfirmOpen(false)}
       />
@@ -300,6 +300,7 @@ export default function AdminSettingsSection() {
                     setPlatformSettings((prev) => ({ ...prev, [field.key]: e.target.value }));
                     setPlatformDirty(true);
                   }}
+                  disabled={['platformFeePercent','minOrderLiters','verificationDays','autoApproveThreshold'].includes(field.key)}
                   className="w-full px-3.5 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all duration-150"
                 />
               </div>
@@ -307,7 +308,7 @@ export default function AdminSettingsSection() {
           </div>
           <div className="p-3 rounded-xl bg-warning-bg border border-warning/20 flex items-start gap-2">
             <AlertTriangle size={15} className="text-warning flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-warning font-medium">Changes to platform fee and thresholds will affect all future transactions. A confirmation dialog will appear before saving.</p>
+            <p className="text-xs text-warning font-medium">Display preferences are saved for this admin. Pricing and approval policy integration is pending; operational fields cannot be changed.</p>
           </div>
           <div className="flex items-center gap-3 pt-2">
             <SaveButton sectionKey="platform" label="Save Configuration" onClick={handlePlatformSave} icon={Save} />

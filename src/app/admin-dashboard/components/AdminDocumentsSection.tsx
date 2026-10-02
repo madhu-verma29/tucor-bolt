@@ -52,7 +52,7 @@ export default function AdminDocumentsSection() {
             Review and manage all uploaded business documents, FSSAI licenses, GST certificates, and compliance files
           </p>
         </div>
-        <button onClick={()=>toast.info('Document requests are sent from the selected verification workflow')} className="btn-primary py-2 text-xs gap-1.5">
+        <button onClick={async()=>{const email=window.prompt('Business owner email');if(!email)return;const message=window.prompt('Which documents are needed?');if(!message?.trim())return;try{const business=(await adminApi.businesses()).find(b=>b.email.toLowerCase()===email.trim().toLowerCase());if(!business)throw new Error('Business not found');await adminApi.requestDocument(business.id,message);toast.success('Document request recorded');}catch(e){toast.error(e instanceof Error?e.message:'Request failed');}}} className="btn-primary py-2 text-xs gap-1.5">
           <Plus size={13} />
           Request Document
         </button>

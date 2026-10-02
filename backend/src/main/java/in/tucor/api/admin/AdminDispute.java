@@ -8,6 +8,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "admin_disputes")
 public class AdminDispute {
+ @Column(name="previous_order_status") public String previousOrderStatus;
  @Id public UUID id;
  @Column(name="public_id",nullable=false,unique=true) public String publicId;
  @Column(name="order_id",nullable=false,unique=true) public UUID orderId;

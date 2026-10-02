@@ -159,9 +159,7 @@ export default function AdminPaymentsSection() {
                         </button>
                       )}
                       {payment.status === 'Disputed' && (
-                        <button onClick={() => updatePayment(payment.id,'resolve')} className="text-xs text-danger hover:underline">
-                          Resolve
-                        </button>
+                        <span className="text-xs text-muted-foreground">Provider reconciliation required</span>
                       )}
                     </td>
                   </tr>

@@ -1,4 +1,4 @@
-import {authApi,clearSession,getSession,saveSession} from './auth-api';
+import {authorizedFetch} from './auth-api';
 
 const API=(process.env.NEXT_PUBLIC_API_BASE_URL||'http://localhost:8080').replace(/\/$/,'');
 
@@ -14,7 +14,7 @@ export interface AdminOrder{id:string;seller:string;buyer:string;oilType:string;
 export interface AdminPickup{id:string;orderId:string;oilType:string;volumeLiters:number;scheduledDate:string;status:'Pending'|'Scheduled'|'Assigned'|'In Transit'|'Completed';agentName:string;vehicleNumber:string;sellerCity:string;sellerRef:string;buyerRef:string}
 export interface AdminPayment{id:string;orderId:string;sellerRef:string;buyerRef:string;amount:number;platformFee:number;status:'Pending'|'Processing'|'Settled'|'Failed'|'Disputed';dueDate:string;settledDate?:string;reference:string}
 export interface AdminDisputeTimeline{date:string;action:string;by:string}
-export interface AdminDispute{id:string;orderId:string;raisedBy:string;raisedByRole:'Seller'|'Buyer';against:string;reason:string;description:string;status:'Open'|'Under Investigation'|'Resolved'|'Escalated'|'Closed';priority:'High'|'Medium'|'Low';amount:number;raisedAt:string;updatedAt:string;resolution?:string;timeline:AdminDisputeTimeline[]}
+export interface AdminDispute{id:string;orderId:string;raisedBy:string;raisedByRole:'Seller'|'Buyer'|'Admin';against:string;reason:string;description:string;status:'Open'|'Under Investigation'|'Resolved'|'Escalated'|'Closed';priority:'High'|'Medium'|'Low';amount:number;raisedAt:string;updatedAt:string;resolution?:string;timeline:AdminDisputeTimeline[]}
 export interface AdminAuditLog{id:string;timestamp:string;actor:string;actorRole:'Admin'|'System'|'Seller'|'Buyer';action:string;module:'Users'|'Businesses'|'Verification'|'Orders'|'Payments'|'Disputes'|'Settings'|'System';target:string;targetId:string;ipAddress:string;severity:'Info'|'Warning'|'Critical';details:string}
 export interface AdminNotification{id:string;message:string;time:string;unread:boolean}
 export interface MonthVolume{month:string;collected:number;sourced:number}
@@ -29,11 +29,18 @@ export interface AdminNotificationSettings{emailNewRegistrations:boolean;emailDi
 export interface AdminSettings{platform:AdminPlatformSettings;notifications:AdminNotificationSettings}
 export interface AdminAccess{id:string;name:string;email:string;role:string;status:string;avatar:string}
 
-async function call<T>(path:string,init:RequestInit={}):Promise<T>{let session=getSession();if(!session)throw new Error('Not authenticated');const run=()=>fetch(API+path,{...init,headers:{...(init.body instanceof FormData?{}:{'Content-Type':'application/json'}),Authorization:`Bearer ${session!.accessToken}`,...(init.headers||{})}});let response=await run();if(response.status===401){try{session=await authApi.refresh(session.refreshToken);saveSession(session,!!localStorage.getItem('tucor.auth'));response=await run()}catch{clearSession();throw new Error('Session expired')}}if(!response.ok){let message='Request failed';try{const body=await response.json();message=body.error||body.message||message}catch{}throw new Error(message)}if(response.status===204)return undefined as T;const body=await response.text();return body?JSON.parse(body) as T:undefined as T}
-async function download(path:string,fileName:string){let session=getSession();if(!session)throw new Error('Not authenticated');const response=await fetch(API+path,{headers:{Authorization:`Bearer ${session.accessToken}`}});if(!response.ok){let message='Download failed';try{const body=await response.json();message=body.error||body.message||message}catch{}throw new Error(message)}const url=URL.createObjectURL(await response.blob());const link=document.createElement('a');link.href=url;link.download=fileName;link.click();URL.revokeObjectURL(url)}
+async function call<T>(path:string,init:RequestInit={}):Promise<T>{const response=await authorizedFetch(path,init);if(!response.ok){let message='Request failed';try{const body=await response.json();message=body.error||body.message||message}catch{}throw new Error(message)}if(response.status===204)return undefined as T;const body=await response.text();return body?JSON.parse(body) as T:undefined as T}
+async function download(path:string,fileName:string){const response=await authorizedFetch(path);if(!response.ok)throw new Error('Download failed');const url=URL.createObjectURL(await response.blob());const link=document.createElement('a');link.href=url;link.download=fileName;link.click();URL.revokeObjectURL(url)}
 const action=(path:string,value:string,extra:Record<string,unknown>={})=>call<any>(path,{method:'PATCH',body:JSON.stringify({action:value,...extra})});
 
 export const adminApi={
+ search:(q:string)=>call<{id:string;title:string;subtitle:string;section:string}[]>(`/api/admin/search?q=${encodeURIComponent(q)}`),
+ readNotification:(id:string)=>call<void>(`/api/admin/notifications/${encodeURIComponent(id)}/read`,{method:'PUT'}),
+ requestDocument:(id:string,message:string)=>call(`/api/admin/businesses/${id}/document-requests`,{method:'POST',body:JSON.stringify({message})}),
+ orderAction:(id:string,value:string,reason?:string)=>action(`/api/admin/orders/${id}`,value,{reason}),
+ schedulePickup:(id:string,scheduledDate:string)=>call(`/api/admin/orders/${id}/pickup`,{method:'POST',body:JSON.stringify({scheduledDate})}),
+ openDispute:(id:string,reason:string,description:string)=>call(`/api/admin/orders/${id}/disputes`,{method:'POST',body:JSON.stringify({reason,description})}),
+ adminAccess:(id:string,value:string)=>action(`/api/admin/admins/${id}`,value),
  profile:()=>call<AdminProfile>('/api/admin/profile'),summary:()=>call<AdminSummary>('/api/admin/summary'),notifications:()=>call<AdminNotification[]>('/api/admin/notifications'),
  users:()=>call<AdminUser[]>('/api/admin/users'),userAction:(id:string,value:string)=>action(`/api/admin/users/${id}`,value),
  businesses:()=>call<AdminBusiness[]>('/api/admin/businesses'),businessAction:(id:string,value:string)=>action(`/api/admin/businesses/${id}`,value),
@@ -47,5 +54,5 @@ export const adminApi={
  auditLogs:()=>call<AdminAuditLog[]>('/api/admin/audit-logs'),exportAudit:()=>download('/api/admin/audit-logs/export','admin-audit-logs.csv'),
  overview:()=>call<AdminOverview>('/api/admin/overview'),reports:()=>call<AdminReports>('/api/admin/reports'),downloadReport:(type:string)=>download(`/api/admin/reports/${type}/download`,`tucor-${type}-report.csv`),
  settings:()=>call<AdminSettings>('/api/admin/settings'),updatePlatform:(value:AdminPlatformSettings)=>call<AdminPlatformSettings>('/api/admin/settings/platform',{method:'PUT',body:JSON.stringify(value)}),updateNotifications:(value:AdminNotificationSettings)=>call<AdminNotificationSettings>('/api/admin/settings/notifications',{method:'PUT',body:JSON.stringify(value)}),changePassword:(currentPassword:string,newPassword:string)=>call<void>('/api/admin/settings/password',{method:'PUT',body:JSON.stringify({currentPassword,newPassword})}),
- admins:()=>call<AdminAccess[]>('/api/admin/admins'),inviteAdmin:(email:string,name:string)=>call<{email:string;temporaryPassword:string}>('/api/admin/admins/invite',{method:'POST',body:JSON.stringify({email,name,role:'Super Admin'})}),
+ admins:()=>call<AdminAccess[]>('/api/admin/admins'),inviteAdmin:(email:string,name:string)=>call<{email:string;message:string;expiresAt:string}>('/api/admin/admins/invite',{method:'POST',body:JSON.stringify({email,name,role:'Super Admin'})}),
 };

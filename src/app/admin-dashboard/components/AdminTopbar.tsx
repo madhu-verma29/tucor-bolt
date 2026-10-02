@@ -3,7 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, PanelLeftClose, Bell, Search, ChevronDown, LogOut, Settings, Shield } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
-import Link from 'next/link';
+import {authApi,getSession,clearSession} from '@/lib/auth-api';
+import {toast} from 'sonner';
 import { adminApi, type AdminNotification, type AdminProfile } from '@/lib/admin-api';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
   onMobileMenuOpen: () => void;
   sidebarCollapsed: boolean;
   activeSection: string;
+  onNavigate: (section:string)=>void;
 }
 
 const sectionLabels: Record<string, string> = {
@@ -29,7 +31,9 @@ const sectionLabels: Record<string, string> = {
   settings: 'Settings',
 };
 
-export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebarCollapsed, activeSection }: Props) {
+export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebarCollapsed, activeSection, onNavigate }: Props) {
+  const [query,setQuery]=useState('');const [results,setResults]=useState<{id:string;title:string;subtitle:string;section:string}[]>([]);
+  useEffect(()=>{if(query.trim().length<2){setResults([]);return;}let current=true;const timer=setTimeout(()=>{adminApi.search(query.trim()).then(r=>{if(current)setResults(r)}).catch(e=>{if(current)toast.error(e.message)})},300);return()=>{current=false;clearTimeout(timer)}},[query]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifications,setNotifications]=useState<AdminNotification[]>([]);
@@ -70,9 +74,9 @@ export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
         <span className="font-semibold text-foreground">{sectionLabels[activeSection] || 'Overview'}</span>
       </div>
 
-      <div className="flex-1 max-w-sm hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border text-sm text-muted-foreground cursor-pointer hover:border-ring transition-colors duration-150">
+      <div className="relative flex-1 max-w-sm hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border text-sm text-muted-foreground cursor-pointer hover:border-ring transition-colors duration-150">
         <Search size={15} />
-        <span>Search users, orders, disputes...</span>
+        <input aria-label="Search users, orders, disputes" maxLength={80} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search users, orders, disputes..." className="bg-transparent outline-none min-w-0 w-full" />{results.length>0&&<div className="absolute top-full left-0 right-0 bg-card border border-border rounded-xl shadow-lg z-50 max-h-72 overflow-y-auto">{results.map(r=><button key={`${r.section}-${r.id}`} onClick={()=>{onNavigate(r.section);setQuery('');setResults([])}} className="block w-full text-left p-3 hover:bg-muted"><span className="block font-semibold">{r.title}</span><span className="text-xs">{r.subtitle}</span></button>)}</div>}
         <span className="ml-auto text-xs bg-border px-1.5 py-0.5 rounded font-mono">⌘K</span>
       </div>
 
@@ -109,6 +113,7 @@ export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
                 {notifications.map((n) => (
                   <div
                     key={n.id}
+                    onClick={async()=>{try{await adminApi.readNotification(n.id);setNotifications(items=>items.map(a=>a.id===n.id?{...a,unread:false}:a))}catch(e){toast.error(e instanceof Error?e.message:'Unable to mark alert read')}}}
                     className={`px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors duration-100 cursor-pointer ${n.unread ? 'bg-amber-500/5' : ''}`}
                   >
                     <div className="flex items-start gap-2">
@@ -122,7 +127,7 @@ export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
                 ))}
               </div>
               <div className="px-4 py-2.5 border-t border-border">
-                <button className="text-xs text-primary font-semibold hover:underline w-full text-center">
+                <button onClick={()=>{onNavigate('audit-logs');setNotifOpen(false)}} className="text-xs text-primary font-semibold hover:underline w-full text-center">
                   View all alerts
                 </button>
               </div>
@@ -148,18 +153,18 @@ export default function AdminTopbar({ onToggleSidebar, onMobileMenuOpen, sidebar
                 <div className="font-semibold text-foreground text-sm">{adminProfile?.name||'Admin User'}</div>
                 <div className="text-xs text-muted-foreground">{adminProfile?.email||''}</div>
               </div>
-              <button className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors duration-100">
+              <button onClick={()=>{onNavigate('settings');setProfileOpen(false)}} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors duration-100">
                 <Settings size={15} className="text-muted-foreground" />
                 Settings
               </button>
               <div className="border-t border-border">
-                <Link
-                  href="/sign-up-login"
+                <button
+                  onClick={async()=>{const session=getSession();clearSession();if(session)try{await authApi.logout(session.refreshToken)}catch{}window.location.assign('/sign-up-login')}}
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger-bg transition-colors duration-100"
                 >
                   <LogOut size={15} />
                   Sign Out
-                </Link>
+                </button>
               </div>
             </div>
           )}

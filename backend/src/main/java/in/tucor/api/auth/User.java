@@ -2,6 +2,7 @@ package in.tucor.api.auth;
 import jakarta.persistence.*; import java.time.Instant; import java.util.UUID;
 @Entity @Table(name="users") public class User {
 @Column(name="token_version",nullable=false) public int tokenVersion=0;
+@Column(name="display_name") public String displayName;
 @Id public UUID id; @Column(nullable=false,unique=true) public String email; @Column(name="password_hash",nullable=false) public String passwordHash;
 @Enumerated(EnumType.STRING) @Column(nullable=false) public Role role; @Column(nullable=false) public String status="ACTIVE";
 @Column(name="email_verified",nullable=false) public boolean emailVerified=false; @Column(name="failed_login_attempts",nullable=false) public int failedLoginAttempts=0;

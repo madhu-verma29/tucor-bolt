@@ -33,7 +33,7 @@ export default function AdminDisputesSection() {
   });
 
   const handleResolve = async (id: string) => {
-    try{const updated=await adminApi.disputeAction(id,'resolve');setDisputes(prev=>prev.map(d=>d.id===id?updated:d));toast.success('Dispute resolved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to resolve dispute');}
+    const reason=window.prompt('Describe the dispute resolution');if(!reason?.trim())return;try{const updated=await adminApi.disputeAction(id,'resolve',reason);setDisputes(prev=>prev.map(d=>d.id===id?updated:d));toast.success('Dispute resolved');}catch(e){toast.error(e instanceof Error?e.message:'Unable to resolve dispute');}
   };
 
   const handleEscalate = async (id: string) => {

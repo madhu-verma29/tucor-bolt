@@ -22,7 +22,7 @@ export default function AdminPickupsSection() {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [adminPickups,setAdminPickups]=useState<AdminPickup[]>([]);
   useEffect(()=>{adminApi.pickups().then(setAdminPickups).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load pickups'));},[]);
-  const updatePickup=async(id:string,action:'assign'|'complete')=>{try{const updated=await adminApi.pickupAction(id,action);setAdminPickups(items=>items.map(p=>p.id===id?updated:p));toast.success(action==='assign'?`Agent assigned to ${id}`:`${id} marked as completed`);}catch(e){toast.error(e instanceof Error?e.message:'Unable to update pickup');}};
+  const updatePickup=async(id:string,action:'assign'|'complete')=>{const extra:Record<string,string>={};if(action==='assign'){const agentName=window.prompt('Pickup agent name');if(!agentName)return;const vehicleNumber=window.prompt('Vehicle registration number');if(!vehicleNumber)return;const scheduledDate=window.prompt('Pickup date (YYYY-MM-DD)',new Date().toISOString().slice(0,10));if(!scheduledDate)return;Object.assign(extra,{agentName,vehicleNumber,scheduledDate});}try{const updated=await adminApi.pickupAction(id,action,extra);setAdminPickups(items=>items.map(p=>p.id===id?updated:p));toast.success(action==='assign'?`Agent assigned to ${id}`:`${id} marked as completed`);}catch(e){toast.error(e instanceof Error?e.message:'Unable to update pickup');}};
 
   const filtered = adminPickups.filter((p) => {
     const matchSearch = p.id.toLowerCase().includes(search.toLowerCase()) || p.orderId.toLowerCase().includes(search.toLowerCase()) || p.agentName.toLowerCase().includes(search.toLowerCase());

@@ -34,6 +34,8 @@ export default function AdminOrdersSection() {
   const [adminOrders,setAdminOrders]=useState<AdminOrder[]>([]);
   useEffect(()=>{adminApi.orders().then(setAdminOrders).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load orders'));},[]);
 
+  const reloadOrders=async()=>{const rows=await adminApi.orders();setAdminOrders(rows);setSelected(current=>rows.find(o=>o.id===current?.id)||null)};
+  const changeOrder=async(action:string)=>{if(!selected)return;const reason=action==='cancel'?window.prompt('Cancellation reason'):undefined;if(action==='cancel'&&!reason)return;try{await adminApi.orderAction(selected.id,action,reason||undefined);await reloadOrders();toast.success('Order updated')}catch(e){toast.error(e instanceof Error?e.message:'Unable to update order')}};
   const filtered = adminOrders.filter((o) => {
     const matchSearch = o.id.toLowerCase().includes(search.toLowerCase()) || o.seller.toLowerCase().includes(search.toLowerCase()) || o.buyer.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || o.status === filterStatus;
@@ -143,6 +145,12 @@ export default function AdminOrdersSection() {
               <span className={`text-xs px-2 py-0.5 rounded-md border font-medium mt-1.5 inline-block ${statusConfig[selected.status]?.color}`}>{selected.status}</span>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              {['Requested','Under Review','Matched'].includes(selected.status)&&<button className="btn-primary text-xs" onClick={()=>changeOrder('confirm')}>Confirm order</button>}
+              {['Requested','Under Review','Matched','Confirmed'].includes(selected.status)&&<button className="btn-secondary text-xs" onClick={()=>changeOrder('cancel')}>Cancel order</button>}
+              {selected.status==='Confirmed'&&<button className="btn-primary text-xs" onClick={async()=>{const date=window.prompt('Pickup date (YYYY-MM-DD)',new Date().toISOString().slice(0,10));if(!date)return;try{await adminApi.schedulePickup(selected.id,date);await reloadOrders();toast.success('Pickup scheduled');}catch(e){toast.error(e instanceof Error?e.message:'Unable to schedule pickup');}}}>Schedule pickup</button>}
+              {!['Cancelled','Rejected','Disputed'].includes(selected.status)&&<button className="btn-secondary text-xs" onClick={async()=>{const reason=window.prompt('Dispute reason');if(!reason)return;const description=window.prompt('Describe the dispute');if(!description)return;try{await adminApi.openDispute(selected.id,reason,description);await reloadOrders();toast.success('Dispute opened');}catch(e){toast.error(e instanceof Error?e.message:'Unable to open dispute');}}}>Open dispute</button>}
+            </div>
             {/* Order Journey */}
             {!['Cancelled', 'Rejected', 'Disputed'].includes(selected.status) && (
               <div>
