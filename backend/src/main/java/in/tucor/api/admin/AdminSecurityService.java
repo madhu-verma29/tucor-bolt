@@ -16,7 +16,7 @@ public class AdminSecurityService {
  public record Invitation(String email,String message,Instant expiresAt){}
  @Transactional public Invitation invite(String email,String name){
   email=email.trim().toLowerCase(Locale.ROOT);if(users.findByEmailIgnoreCase(email).isPresent())throw new IllegalArgumentException("Email already registered");
-  User u=new User();u.email=email;u.displayName=name.trim();u.passwordHash=encoder.encode(UUID.randomUUID()+"."+UUID.randomUUID());u.role=Role.ADMIN;u.status="PENDING_INVITATION";u.emailVerified=false;users.save(u);
+  User u=new User();u.email=email;u.displayName=name.trim();u.passwordHash=encoder.encode(UUID.randomUUID().toString());u.role=Role.ADMIN;u.status="PENDING_INVITATION";u.emailVerified=false;users.save(u);
   String raw=UUID.randomUUID()+"."+UUID.randomUUID();AuthActionToken t=new AuthActionToken();t.userId=u.id;t.type="ADMIN_INVITE";t.tokenHash=hash(raw);t.expiresAt=Instant.now().plus(Duration.ofHours(24));tokens.save(t);
   mail.adminInvitation(email,raw);return new Invitation(email,"Invitation email sent; recipient must set a password within 24 hours",t.expiresAt);
  }

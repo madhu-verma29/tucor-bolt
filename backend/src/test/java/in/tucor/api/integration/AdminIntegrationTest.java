@@ -54,6 +54,7 @@ class AdminIntegrationTest {
  @Test void secureInvitationsAreSingleUse()throws Exception{
  String email=UUID.randomUUID()+"@example.test";
  JsonNode invited=response(mvc.perform(post("/api/admin/admins/invite").header("Authorization",bearer(admin)).contentType("application/json").content(body(Map.of("email",email,"name","Invited admin","role","ADMIN")))).andExpect(status().isOk()).andReturn());assertFalse(invited.has("temporaryPassword"));
+ User pending=users.findByEmailIgnoreCase(email).orElseThrow();pending.emailVerified=true;pending.passwordHash=encoder.encode("Temp-password-123");users.saveAndFlush(pending);mvc.perform(get("/api/admin/search").param("q","example").header("Authorization",bearer(pending))).andExpect(status().isUnauthorized());mvc.perform(post("/api/auth/login").contentType("application/json").content(body(Map.of("email",email,"password","Temp-password-123","rememberMe",false)))).andExpect(status().isBadRequest());
  var token=org.mockito.ArgumentCaptor.forClass(String.class);org.mockito.Mockito.verify(mail).adminInvitation(org.mockito.ArgumentMatchers.eq(email),token.capture());
  mvc.perform(post("/api/auth/admin-invitations/accept").contentType("application/json").content(body(Map.of("token",token.getValue(),"password","New-password-123")))).andExpect(status().isOk());assertEquals("ACTIVE",users.findByEmailIgnoreCase(email).orElseThrow().status);
  mvc.perform(post("/api/auth/admin-invitations/accept").contentType("application/json").content(body(Map.of("token",token.getValue(),"password","Another-password-123")))).andExpect(status().isBadRequest());
@@ -62,7 +63,7 @@ class AdminIntegrationTest {
  mvc.perform(patch("/api/admin/admins/"+admin.id).header("Authorization",bearer(admin)).contentType("application/json").content(body(Map.of("action","suspend")))).andExpect(status().isBadRequest());assertEquals("ACTIVE",users.findById(admin.id).orElseThrow().status);
  }
  @Test void pickupAndPrivateAlertReceiptsPersist()throws Exception{
- MarketListing l=listing();BuyerOrder o=new BuyerOrder();o.publicId="ORD-"+UUID.randomUUID().toString().substring(0,8);o.buyerId=buyer.id;o.listingId=l.id;o.volumeLiters=20;o.pricePerLiter=l.pricePerLiter;o.totalAmount=new BigDecimal("800");o.status="Confirmed";o=orders.saveAndFlush(o);
+ MarketListing l=listing();BuyerOrder o=new BuyerOrder();o.publicId="ORD-"+UUID.randomUUID().toString().substring(0,8);o.buyerId=buyer.id;o.listingId=l.id;o.volumeLiters=20;o.pricePerLiter=l.pricePerLiter;o.totalAmount=new BigDecimal("800");o.status="Confirmed";o.deliveryAddress="Test delivery address";o=orders.saveAndFlush(o);
  String url="/api/admin/orders/"+o.publicId+"/pickup";
  JsonNode p=response(mvc.perform(post(url).header("Authorization",bearer(admin)).contentType("application/json").content(body(Map.of("scheduledDate",LocalDate.now().toString())))).andExpect(status().isOk()).andReturn());assertEquals("Scheduled",p.get("status").asText());
  mvc.perform(post(url).header("Authorization",bearer(admin)).contentType("application/json").content(body(Map.of("scheduledDate",LocalDate.now().toString())))).andExpect(status().isBadRequest());
