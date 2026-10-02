@@ -411,6 +411,7 @@ function ContactInfoTab() {
     warehouseAddress: '',
     warehouseContact: '',
     warehouseHours: '',
+    warehouseMapLink: '',
   });
 
   useEffect(()=>{buyerApi.contacts().then(setForm).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load contact details'));},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -531,11 +532,15 @@ function ContactInfoTab() {
               { key: 'warehouseAddress', label: 'Warehouse Address', full: true },
               { key: 'warehouseContact', label: 'Contact Number' },
               { key: 'warehouseHours', label: 'Operating Hours' },
+              { key: 'warehouseMapLink', label: 'Map location link (optional)', full: true },
             ].map(({ key, label, full }) => (
               <div key={key} className={full ? 'sm:col-span-2' : ''}>
                 <label className="label-text">{label}</label>
                 <input
                   className="input-field"
+                  type={key === 'warehouseMapLink' ? 'url' : 'text'}
+                  maxLength={key === 'warehouseMapLink' ? 2048 : undefined}
+                  placeholder={key === 'warehouseMapLink' ? 'Paste the location link copied from your map app' : undefined}
                   value={form[key as keyof typeof form]}
                   onChange={(e) => handleChange(key, e.target.value)}
                 />
@@ -549,6 +554,12 @@ function ContactInfoTab() {
             </div>
             <Field label="Contact Number" value={form.warehouseContact} />
             <Field label="Operating Hours" value={form.warehouseHours} />
+            <div className="sm:col-span-3">
+              <div className="text-xs text-muted-foreground mb-1">Map location link</div>
+              {/^https:\/\//i.test(form.warehouseMapLink) ? (
+                <a href={form.warehouseMapLink} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline break-all">Open location on map</a>
+              ) : <span className="text-sm text-muted-foreground">Not added</span>}
+            </div>
           </div>
         )}
       </SectionCard>

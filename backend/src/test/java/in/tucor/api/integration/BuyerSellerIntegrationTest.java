@@ -97,6 +97,22 @@ class BuyerSellerIntegrationTest {
   }
   assertEquals("Payment Pending",orders.findById(o.id).orElseThrow().status);
  }
+ @Test void warehouseMapLinkPersistsIsOwnerScopedAndCanBeRemoved()throws Exception{
+  Map<String,Object> contact=new HashMap<>(Map.of("primaryName","Warehouse owner","primaryPhone","9876543210","primaryEmail",buyer.email,"warehouseAddress","Existing warehouse","warehouseMapLink","https://maps.app.goo.gl/ExampleLocation"));
+  mvc.perform(put("/api/buyer/settings/contacts").header("Authorization",bearer(buyer)).contentType("application/json").content(body(contact))).andExpect(status().isOk());
+  mvc.perform(get("/api/buyer/settings/contacts").header("Authorization",bearer(buyer))).andExpect(jsonPath("$.warehouseMapLink").value("https://maps.app.goo.gl/ExampleLocation")).andExpect(jsonPath("$.warehouseAddress").value("Existing warehouse"));
+  User anotherBuyer=user(Role.BUYER);
+  mvc.perform(get("/api/buyer/settings/contacts").header("Authorization",bearer(anotherBuyer))).andExpect(jsonPath("$.warehouseMapLink").isEmpty());
+  contact.remove("warehouseMapLink");
+  mvc.perform(put("/api/buyer/settings/contacts").header("Authorization",bearer(buyer)).contentType("application/json").content(body(contact))).andExpect(jsonPath("$.warehouseMapLink").value("https://maps.app.goo.gl/ExampleLocation"));
+  for(String unsafe:List.of("javascript:alert(1)","https://","https://user:password@maps.example.test/location")){
+   contact.put("warehouseMapLink",unsafe);
+   mvc.perform(put("/api/buyer/settings/contacts").header("Authorization",bearer(buyer)).contentType("application/json").content(body(contact))).andExpect(status().isBadRequest());
+  }
+  mvc.perform(get("/api/buyer/settings/contacts").header("Authorization",bearer(buyer))).andExpect(jsonPath("$.warehouseMapLink").value("https://maps.app.goo.gl/ExampleLocation"));
+  contact.put("warehouseMapLink","");
+  mvc.perform(put("/api/buyer/settings/contacts").header("Authorization",bearer(buyer)).contentType("application/json").content(body(contact))).andExpect(jsonPath("$.warehouseMapLink").isEmpty());
+ }
  @Test void unverifiedRegistrationTokenCannotAccessOperationalEndpoints()throws Exception{
   seller.emailVerified=false;seller.status="PENDING_VERIFICATION";users.saveAndFlush(seller);
   mvc.perform(get("/api/seller/profile").header("Authorization",bearer(seller))).andExpect(status().isUnauthorized());

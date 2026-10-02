@@ -1,7 +1,7 @@
 name: Production readiness
 on:
   push:
-    branches: [buyer-seller-production-hardening, admin-production-hardening]
+    branches: [buyer-seller-production-hardening, admin-production-hardening, buyer-map-location-link]
   pull_request:
   workflow_dispatch:
 permissions:

@@ -41,7 +41,7 @@ public class BuyerSettingsController {
                         @Size(max=160) String altName,@Size(max=160) String altRole,
                         @Pattern(regexp="^$|^[6-9][0-9]{9}$") String altPhone,@Email @Size(max=255) String altEmail,
                         @Size(max=2000) String warehouseAddress,@Pattern(regexp="^$|^[6-9][0-9]{9}$") String warehouseContact,
-                        @Size(max=160) String warehouseHours){}
+                        @Size(max=160) String warehouseHours,@Size(max=2048) String warehouseMapLink){}
  public record PasswordChange(@NotBlank String currentPassword,@NotBlank @Size(min=8,max=72) String newPassword){}
  public record Preferences(boolean emailOrders,boolean emailPickups,boolean emailPayments,boolean emailKyc,boolean smsOrders,boolean smsPickups,
                            boolean whatsappUpdates,boolean autoReorder,boolean priceAlerts,boolean weeklyReport,
@@ -111,6 +111,7 @@ public class BuyerSettingsController {
   p.alternateRole=optional(request.altRole());p.alternatePhone=optional(request.altPhone());
   p.alternateEmail=optional(request.altEmail()).toLowerCase(Locale.ROOT);p.warehouseAddress=optional(request.warehouseAddress());
   p.warehouseContact=optional(request.warehouseContact());p.warehouseHours=optional(request.warehouseHours());
+  if(request.warehouseMapLink()!=null)p.warehouseMapLink=mapLink(request.warehouseMapLink());
   profiles.save(p);return contactDto(u,p);
  }
 
@@ -128,7 +129,13 @@ public class BuyerSettingsController {
  private Account accountDto(User u,RegistrationProfile p){return new Account(p.fullName,u.email,p.phone,p.gstNumber,p.businessName);}
  private Notifications notificationDto(BuyerNotificationPreference p){return new Notifications(p.emailOrders,p.emailPickups,p.emailPayments,p.smsPickups,p.smsPayments,p.appAll);}
  private Preferences preferencesDto(BuyerNotificationPreference n,BuyerProcurementPreference p){return new Preferences(n.emailOrders,n.emailPickups,n.emailPayments,n.emailKyc,n.smsOrders,n.smsPickups,n.whatsappUpdates,p.autoReorder,p.priceAlerts,p.weeklyReport,p.sustainabilityReport,p.compactView,p.preferredGrade,p.maxFfa,p.minVolume,p.maxPrice,p.preferredRegions,p.currency,p.language,n.marketingEmails);}
- private Contacts contactDto(User u,RegistrationProfile p){return new Contacts(p.fullName,p.primaryRole,p.phone,p.primaryEmail==null?u.email:p.primaryEmail,p.alternateName,p.alternateRole,p.alternatePhone,p.alternateEmail,p.warehouseAddress==null?p.address+", "+p.city+", "+p.state+" "+p.pincode:p.warehouseAddress,p.warehouseContact,p.warehouseHours);}
+ private Contacts contactDto(User u,RegistrationProfile p){return new Contacts(p.fullName,p.primaryRole,p.phone,p.primaryEmail==null?u.email:p.primaryEmail,p.alternateName,p.alternateRole,p.alternatePhone,p.alternateEmail,p.warehouseAddress==null?p.address+", "+p.city+", "+p.state+" "+p.pincode:p.warehouseAddress,p.warehouseContact,p.warehouseHours,p.warehouseMapLink);}
+ private String mapLink(String value){
+  String link=value.trim();if(link.isEmpty())return null;
+  try{java.net.URI uri=new java.net.URI(link);if(!"https".equalsIgnoreCase(uri.getScheme())||uri.getHost()==null||uri.getUserInfo()!=null)throw new IllegalArgumentException();}
+  catch(java.net.URISyntaxException|IllegalArgumentException e){throw new IllegalArgumentException("Map location link must be a valid HTTPS URL");}
+  return link;
+ }
  private BuyerNotificationPreference notification(UUID id){return notifications.findById(id).orElseGet(()->{BuyerNotificationPreference p=new BuyerNotificationPreference();p.buyerId=id;return notifications.save(p);});}
  private BuyerProcurementPreference procurement(UUID id){return procurementPreferences.findById(id).orElseGet(()->{BuyerProcurementPreference p=new BuyerProcurementPreference();p.buyerId=id;return procurementPreferences.save(p);});}
  private RegistrationProfile profile(UUID id){return profiles.findById(id).orElseThrow(()->new IllegalArgumentException("Buyer profile not found"));}

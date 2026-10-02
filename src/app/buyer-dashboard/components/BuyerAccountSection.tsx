@@ -408,6 +408,7 @@ function ContactInfoTab() {
     warehouseAddress: '',
     warehouseContact: '',
     warehouseHours: '',
+    warehouseMapLink: '',
   });
 
   useEffect(()=>{buyerApi.contacts().then(setForm).catch(e=>toast.error(e instanceof Error?e.message:'Unable to load contact details'));},[]); const handleChange = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
