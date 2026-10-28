@@ -1,0 +1,685 @@
+Restaurant/Hotel
+        │
+Creates UCO Listing
+        │
+Marketplace Validates Listing
+        │
+Marketplace Matches Buyer
+        │
+Buyer Accepts Offer
+        │
+Marketplace Schedules Pickup
+        │
+Oil Collected
+        │
+Quality Verification
+        │
+Payment Processed
+        │
+Order Completed
+
+================
+User Roles
+
+Instead of just Buyer and Seller, I'd define:
+
+Seller
+Creates UCO listings
+Schedules availability
+Receives payments
+Views order history
+Buyer
+Searches available oil
+Places purchase requests
+Pays through the platform
+Tracks orders
+Admin
+Verifies businesses
+Matches supply and demand (or oversees automatic matching)
+Resolves disputes
+Manages payments and compliance
+Logistics Partner (optional)
+Assigned pickups
+Updates pickup status
+Uploads proof of collection
+Features for Sellers
+Register business
+Verify documents
+Create oil listing
+Upload photos (optional)
+Specify quantity
+Specify pickup availability
+Track active listings
+View payment history
+Features for Buyers
+Search listings
+Filter by city, oil type, quantity
+Request purchase
+Track order
+Download invoices
+View purchase history
+
+They cannot contact sellers.
+
+Marketplace Features
+
+This is where your platform becomes valuable.
+
+Matching Engine
+
+Automatically suggest the best buyer based on:
+
+Distance
+Quantity required
+Buyer preferences
+Historical transactions
+Capacity
+Order Management
+
+Once a buyer confirms:
+
+Reserve the listing
+Prevent duplicate purchases
+Generate order
+Schedule pickup
+Logistics
+
+Manage:
+
+Pickup scheduling
+Driver assignment
+Live status
+Proof of pickup
+Payment
+
+Platform receives payment.
+
+Then releases payment to the seller after successful pickup and any required quality checks.
+
+This also allows you to charge a commission.
+
+Notifications
+Listing created
+Order confirmed
+Pickup scheduled
+Driver arrived
+Payment released
+Analytics
+
+For sellers:
+
+Monthly oil sold
+Earnings
+Average selling price
+
+For buyers:
+
+Monthly purchases
+
+Spending
+Supplier performance (without revealing identities)
+
+For admins:
+
+Total UCO traded
+Active businesses
+Top cities
+Pending pickups
+==========
+Database Modules
+Auth
+
+Users
+
+Business Profile
+
+Address
+
+Verification
+
+Oil Listing
+
+Matching
+
+Order
+
+Pickup
+
+Payment
+
+Notification
+
+Audit Log
+============
+A Few Decisions to Make
+
+These will shape the rest of the system:
+
+1. Pricing
+
+Who decides the price?
+
+Seller enters price.
+Platform recommends a price.
+Platform fixes the price.
+Buyer submits a purchase request at a given price.
+2. Matching
+
+How should buyers receive listings?
+
+Buyers browse all listings.
+Platform recommends listings.
+Platform automatically allocates listings to buyers based on rules.
+3. Pickup
+
+Who arranges transport?
+
+Platform logistics.
+Buyer logistics.
+Third-party logistics.
+My recommendation
+
+If your long-term goal is to build a scalable business rather than just a listing website, I'd position the platform like this:
+
+A managed B2B procurement marketplace for Used Cooking Oil, where restaurants sell UCO, recyclers buy it, and the platform manages discovery, matching, logistics, payments, and compliance without exposing either party's contact details.
+
+That creates a clear value proposition and gives you opportunities to monetize through transaction fees, logistics services, premium analytics, and compliance support, while maintaining control over the customer experience.
+
+
+==================
+Prompt--
+# Build a Production-Ready B2B Marketplace for Used Cooking Oil (UCO)
+
+You are an experienced Senior Software Architect and Full Stack Engineer.
+
+Design and develop a modern, scalable, production-ready web application for a **B2B Used Cooking Oil (UCO) Marketplace**.
+
+## Business Objective
+
+This platform is **NOT** an e-commerce website like Amazon and **NOT** a direct buyer-seller marketplace like IndiaMART.
+
+It is a **managed procurement platform** where restaurants and food businesses sell Used Cooking Oil (UCO), while recycling companies and biodiesel manufacturers purchase it **through the platform**.
+
+The platform acts as a trusted intermediary.
+
+### Important Business Rules
+
+* Buyers and sellers must NEVER communicate directly.
+* Hide phone numbers, email addresses and company contact details.
+* No chat feature.
+* No direct messaging.
+* No quotation exchange.
+* No inquiry system.
+* All communication happens through platform-managed workflows.
+* Every transaction is managed by the platform.
+
+The platform owns:
+
+* Listing Management
+* Buyer Matching
+* Order Management
+* Pickup Scheduling
+* Payment Tracking
+* Business Verification
+* Analytics
+* Administration
+
+---
+
+# Technology Stack
+
+Frontend
+
+* React
+* TypeScript
+* Tailwind CSS
+* Responsive Design
+* Modern dashboard UI
+* Component-based architecture
+
+Backend
+
+* Java 21
+* Spring Boot
+* Spring Security
+* Spring Data JPA
+* Maven
+* REST APIs
+* JWT Authentication
+* Flyway
+* PostgreSQL
+
+Database
+
+* PostgreSQL
+
+Architecture
+
+* Feature-based modular architecture
+* Clean Architecture principles
+* DTO pattern
+* Repository pattern
+* Service layer
+* Global exception handling
+* Validation
+* Logging
+* API versioning (/api/v1)
+
+---
+
+# User Roles
+
+## Seller
+
+Examples
+
+* Restaurants
+* Hotels
+* Cafes
+* Cloud Kitchens
+* Caterers
+* Food Courts
+
+Seller can
+
+* Register
+* Login
+* Create Business Profile
+* Upload required documents
+* Create UCO Listings
+* Edit Listings
+* Delete Listings
+* View Orders
+* View Payment History
+* View Analytics
+
+Seller CANNOT
+
+* Contact buyers
+* View buyer contact details
+
+---
+
+## Buyer
+
+Examples
+
+* Biodiesel companies
+* Oil recyclers
+* Aggregators
+
+Buyer can
+
+* Register
+* Login
+* Browse listings
+* Filter listings
+* Place purchase requests
+* View order history
+* Track pickups
+* Download invoices
+
+Buyer CANNOT
+
+* Contact sellers
+* View seller phone numbers
+* View seller email addresses
+
+---
+
+## Admin
+
+Admin controls the platform.
+
+Admin can
+
+* Verify businesses
+* Approve sellers
+* Approve buyers
+* Suspend users
+* Manage listings
+* Match buyers and sellers
+* Manage orders
+* Manage pickups
+* Manage payments
+* View analytics
+* Generate reports
+
+---
+
+# Core Modules
+
+## Authentication
+
+* Login
+* Registration
+* JWT Authentication
+* Forgot Password
+* Reset Password
+* Email Verification
+* Role-based authorization
+
+---
+
+## Business Profile
+
+Fields
+
+* Business Name
+* Business Type
+* GST Number
+* FSSAI Number
+* PAN Number
+* Address
+* City
+* State
+* Pincode
+* Contact Person
+* Company Logo
+* Description
+* Verification Status
+
+Verification Status
+
+* Pending
+* Approved
+* Rejected
+
+---
+
+## UCO Listing
+
+Each listing contains
+
+* Listing ID
+* Seller
+* Oil Type
+* Quantity (Litres)
+* Storage Condition
+* Quality Grade
+* Estimated FFA
+* Pickup Address
+* Pickup Window
+* Images
+* Expected Price
+* Negotiable (Yes/No)
+* Status
+* Created Date
+
+Status
+
+* Draft
+* Active
+* Reserved
+* Pickup Scheduled
+* Collected
+* Completed
+* Cancelled
+
+---
+
+## Buyer Discovery
+
+Buyer can
+
+* Search
+* Filter
+* Sort
+
+Filters
+
+* City
+* State
+* Quantity
+* Oil Type
+* Price
+* Availability
+* Verified Businesses
+
+---
+
+## Matching Engine
+
+When a buyer selects a listing
+
+Platform
+
+* validates availability
+* reserves listing
+* creates order
+* prevents duplicate purchase
+
+No direct communication.
+
+---
+
+## Order Module
+
+Order contains
+
+* Order Number
+* Buyer
+* Seller
+* Listing
+* Quantity
+* Final Price
+* Status
+* Pickup Date
+* Created Date
+
+Statuses
+
+* Pending
+* Confirmed
+* Pickup Scheduled
+* Collected
+* Payment Pending
+* Completed
+* Cancelled
+
+---
+
+## Pickup Module
+
+Platform schedules pickup.
+
+Contains
+
+* Pickup Date
+* Time Slot
+* Driver
+* Vehicle
+* OTP Verification
+* Pickup Notes
+* Pickup Proof
+* Completion Status
+
+---
+
+## Payment Module
+
+Track
+
+* Amount
+* Payment Status
+* Transaction Reference
+* Payment Date
+* Commission
+* Seller Settlement Status
+
+Support
+
+* UPI
+* Bank Transfer
+* Cash (optional)
+
+---
+
+## Notifications
+
+Notify users for
+
+* Listing Approved
+* Listing Reserved
+* Pickup Scheduled
+* Pickup Completed
+* Payment Released
+* Verification Approved
+
+---
+
+## Dashboards
+
+### Seller Dashboard
+
+Show
+
+* Active Listings
+* Completed Orders
+* Earnings
+* Monthly Sales
+* Pending Pickups
+
+### Buyer Dashboard
+
+Show
+
+* Purchased Quantity
+* Active Orders
+* Completed Orders
+* Monthly Spend
+
+### Admin Dashboard
+
+Show
+
+* Total Users
+* Verified Businesses
+* Total Oil Traded
+* Orders
+* Revenue
+* Pending Verifications
+* Pending Pickups
+
+---
+
+# Admin Features
+
+* Business Verification
+* User Management
+* Listing Approval
+* Order Monitoring
+* Payment Monitoring
+* Audit Logs
+* Reports
+* Dashboard Analytics
+
+---
+
+# Reports
+
+Generate
+
+* Daily Transactions
+* Monthly Transactions
+* Oil Collected
+* Revenue
+* Seller Performance
+* Buyer Performance
+* Top Cities
+* Pending Orders
+
+---
+
+# Security
+
+Implement
+
+* JWT Authentication
+* Password Encryption
+* Role-based Authorization
+* Input Validation
+* Global Exception Handling
+* Audit Logging
+* Secure REST APIs
+
+---
+
+# UI Requirements
+
+Design a clean professional interface inspired by enterprise SaaS products.
+
+Pages
+
+* Landing Page
+* Login
+* Register
+* Seller Dashboard
+* Buyer Dashboard
+* Admin Dashboard
+* Business Profile
+* Listing Management
+* Orders
+* Pickup Management
+* Payments
+* Reports
+* Settings
+
+Use
+
+* Responsive Design
+* Modern Cards
+* Charts
+* Tables
+* Pagination
+* Search
+* Filters
+* Dark/Light Mode
+
+---
+
+# Future Ready
+
+Keep architecture extensible for
+
+* Mobile apps
+* Kafka integration
+* Redis caching
+* Docker deployment
+* Kubernetes deployment
+* AWS deployment
+* AI-based buyer matching
+* Price prediction
+* Route optimization
+
+---
+
+Generate production-quality code with clean architecture, meaningful comments where necessary, reusable components, RESTful APIs, proper validation, and maintainable project structure. Avoid placeholder CRUD-only implementations; model the workflows around the business rules described above.
+
+
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+
+GET    /api/v1/users/me
+PUT    /api/v1/users/me
+
+POST   /api/v1/businesses
+GET    /api/v1/businesses/{id}
+PUT    /api/v1/businesses/{id}/verify
+
+POST   /api/v1/listings
+GET    /api/v1/listings
+GET    /api/v1/listings/{id}
+PUT    /api/v1/listings/{id}
+
+POST   /api/v1/orders
+GET    /api/v1/orders/{id}
+PUT    /api/v1/orders/{id}/status
+
+POST   /api/v1/pickups
+PUT    /api/v1/pickups/{id}/schedule
+
+POST   /api/v1/inspections
+POST   /api/v1/payments
+GET    /api/v1/analytics/dashboard

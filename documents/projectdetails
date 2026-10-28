@@ -1,0 +1,36 @@
+Important things-
+Registration files stored at
+C:\Users\Asus\Downloads\tucor-bolt\backend\uploads\registration
+
+mvn spring-boot:run
+$env:JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Kolkata"
+
+ctrl+ALt+L ---format code
+
+================
+GET  /api/buyer/profile
+PUT  /api/buyer/profile
+
+GET  /api/buyer/listings
+
+POST /api/buyer/orders
+GET  /api/buyer/orders
+
+GET  /api/buyer/payments
+
+GET  /api/buyer/dashboard
+GET    /api/buyer/bank-accounts
+POST   /api/buyer/bank-accounts
+PUT    /api/buyer/bank-accounts/{id}/primary
+DELETE /api/buyer/bank-accounts/{id}
+GET    /api/buyer/documents
+POST   /api/buyer/documents
+GET    /api/buyer/documents/{id}/download
+DELETE /api/buyer/documents/{id}
+
+GET    /api/buyer/saved-listings
+POST   /api/buyer/saved-listings/{listingId}
+DELETE /api/buyer/saved-listings/{listingId}
+
+GET    /api/buyer/payments
+POST   /api/buyer/payments

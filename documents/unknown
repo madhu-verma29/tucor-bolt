@@ -1,0 +1,386 @@
+Identified data model
+Registered business
+- businessName
+- tradeName
+- businessType
+- category
+- pan
+- cin
+- yearEstablished
+- website
+Registered address
+- address
+- city
+- state
+- pincode
+- country
+Contacts and delivery location
+- Primary contact: name, role, phone, email
+- Alternate contact: name, role, phone, email
+- Warehouse: address, contact number, operating hours
+Verification
+- Trust score
+- Document ID
+- Document type
+- Document number
+- Status
+- Submission date
+- Expiry date
+- Review note
+- Created/updated timestamps
+Document types shown by the UI:
+- GST Registration Certificate
+- Business PAN Card
+- Director / Authorized Signatory KYC
+- End-Use Declaration (UCO)
+Bank-account verification is the fifth verification-progress item.
+Bank accounts
+- Account holder name
+- Bank name
+- Account type
+- Account number
+- IFSC
+- Branch
+- Verification status
+- Primary-account flag
+The API will never return a full account number—only a masked value and last four digits.
+Preferences and account security
+Notification preferences:
+- Order status updates
+- Payment alerts
+- Pickup/delivery reminders
+- Price-drop alerts
+- Weekly procurement report
+- Marketing emails
+Security preferences:
+- Two-factor authentication
+- Login activity alerts
+- Automatic session timeout
+Separate action payloads are required for password changes, account deactivation, and deletion.
+REST API contract
+All responses use { "data": ... }. Errors use { "error": ... }.
+Method	Endpoint	Purpose
+GET	/api/v1/buyer/profile	Read registered business and address
+PUT	/api/v1/buyer/profile	Replace registered business and address
+GET	/api/v1/buyer/profile/contact	Read contacts and warehouse
+PUT	/api/v1/buyer/profile/contact	Replace contacts and warehouse
+GET	/api/v1/buyer/profile/verification	Read trust score, progress, and documents
+POST	/api/v1/buyer/profile/verification/documents	Upload a verification document
+PUT	/api/v1/buyer/profile/verification/documents/{id}	Re-upload/update document metadata
+GET	/api/v1/buyer/profile/verification/documents/{id}/download	Obtain authorized document download
+GET	/api/v1/buyer/profile/bank-accounts	List linked accounts
+POST	/api/v1/buyer/profile/bank-accounts	Add and initiate account verification
+PATCH	/api/v1/buyer/profile/bank-accounts/{id}/primary	Make an account primary
+DELETE	/api/v1/buyer/profile/bank-accounts/{id}	Remove an account
+GET	/api/v1/buyer/profile/settings	Read preferences
+PUT	/api/v1/buyer/profile/settings	Replace preferences
+PUT	/api/v1/buyer/profile/password	Change password
+POST	/api/v1/buyer/profile/deactivate	Temporarily deactivate account
+DELETE	/api/v1/buyer/profile/account	Permanently delete account
+
+
+Successful updates return 200; bank/document creation returns 201; successful deletion returns 204.
+JSON schemas
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "BusinessProfileInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "businessName",
+        "tradeName",
+        "businessType",
+        "category",
+        "pan",
+        "cin",
+        "yearEstablished",
+        "website",
+        "address",
+        "city",
+        "state",
+        "pincode",
+        "country"
+      ],
+      "properties": {
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "tradeName": { "type": ["string", "null"], "maxLength": 200 },
+        "businessType": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "pan": {
+          "type": "string",
+          "pattern": "^[A-Z]{5}[0-9]{4}[A-Z]$"
+        },
+        "cin": { "type": ["string", "null"], "maxLength": 21 },
+        "yearEstablished": {
+          "type": "string",
+          "pattern": "^[0-9]{4}$"
+        },
+        "website": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "maxLength": 500
+        },
+        "address": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "city": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "state": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "pincode": { "type": "string", "minLength": 3, "maxLength": 12 },
+        "country": { "type": "string", "minLength": 2, "maxLength": 100 }
+      }
+    },
+    "Contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "role", "phone", "email"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "phone": { "type": "string", "minLength": 7, "maxLength": 25 },
+        "email": { "type": "string", "format": "email", "maxLength": 254 }
+      }
+    },
+    "ContactInfoInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primaryContact", "alternateContact", "warehouse"],
+      "properties": {
+        "primaryContact": { "$ref": "#/$defs/Contact" },
+        "alternateContact": {
+          "anyOf": [
+            { "$ref": "#/$defs/Contact" },
+            { "type": "null" }
+          ]
+        },
+        "warehouse": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["address", "contactPhone", "operatingHours"],
+          "properties": {
+            "address": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "contactPhone": { "type": "string", "minLength": 7, "maxLength": 25 },
+            "operatingHours": { "type": "string", "minLength": 1, "maxLength": 150 }
+          }
+        }
+      }
+    },
+    "VerificationDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "status", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": {
+          "enum": [
+            "gst_registration",
+            "business_pan",
+            "authorized_signatory_kyc",
+            "uco_end_use_declaration"
+          ]
+        },
+        "documentNumber": { "type": ["string", "null"], "maxLength": 100 },
+        "status": {
+          "enum": [
+            "not_submitted",
+            "submitted",
+            "under_review",
+            "verified",
+            "rejected"
+          ]
+        },
+        "submittedAt": { "type": ["string", "null"], "format": "date-time" },
+        "expiresAt": { "type": ["string", "null"], "format": "date-time" },
+        "reviewNote": { "type": ["string", "null"], "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "CreateBankAccountRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountHolderName",
+        "bankName",
+        "accountNumber",
+        "confirmAccountNumber",
+        "ifsc",
+        "accountType"
+      ],
+      "properties": {
+        "accountHolderName": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "bankName": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "accountNumber": { "type": "string", "minLength": 6, "maxLength": 34 },
+        "confirmAccountNumber": { "type": "string", "minLength": 6, "maxLength": 34 },
+        "ifsc": { "type": "string", "pattern": "^[A-Z]{4}0[A-Z0-9]{6}$" },
+        "accountType": { "enum": ["current", "savings"] }
+      }
+    },
+    "BankAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "accountHolderName",
+        "bankName",
+        "accountType",
+        "maskedAccountNumber",
+        "last4",
+        "ifsc",
+        "branch",
+        "verificationStatus",
+        "primary"
+      ],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "accountHolderName": { "type": "string" },
+        "bankName": { "type": "string" },
+        "accountType": { "enum": ["current", "savings"] },
+        "maskedAccountNumber": { "type": "string" },
+        "last4": { "type": "string", "pattern": "^[0-9]{4}$" },
+        "ifsc": { "type": "string" },
+        "branch": { "type": ["string", "null"] },
+        "verificationStatus": {
+          "enum": ["pending", "verified", "failed"]
+        },
+        "primary": { "type": "boolean" }
+      }
+    },
+    "SettingsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["notifications", "security"],
+      "properties": {
+        "notifications": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "orderUpdates",
+            "paymentAlerts",
+            "pickupReminders",
+            "priceAlerts",
+            "weeklyReport",
+            "marketingEmails"
+          ],
+          "properties": {
+            "orderUpdates": { "type": "boolean" },
+            "paymentAlerts": { "type": "boolean" },
+            "pickupReminders": { "type": "boolean" },
+            "priceAlerts": { "type": "boolean" },
+            "weeklyReport": { "type": "boolean" },
+            "marketingEmails": { "type": "boolean" }
+          }
+        },
+        "security": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "twoFactor",
+            "loginAlerts",
+            "sessionTimeout"
+          ],
+          "properties": {
+            "twoFactor": { "type": "boolean" },
+            "loginAlerts": { "type": "boolean" },
+            "sessionTimeout": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "ChangePasswordRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currentPassword", "newPassword", "confirmNewPassword"],
+      "properties": {
+        "currentPassword": { "type": "string", "minLength": 1 },
+        "newPassword": { "type": "string", "minLength": 8, "maxLength": 128 },
+        "confirmNewPassword": { "type": "string", "minLength": 8, "maxLength": 128 }
+      }
+    },
+    "ApiError": {
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" },
+            "fields": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+Verification uploads use multipart/form-data:
+{
+  "type": "gst_registration | business_pan | authorized_signatory_kyc | uco_end_use_declaration",
+  "documentNumber": "optional string",
+  "expiresAt": "optional ISO-8601 date-time",
+  "file": "binary"
+}
+Representative responses:
+{
+  "data": {
+    "businessName": "Example Industries Pvt Ltd",
+    "tradeName": "Example Biofuel",
+    "businessType": "Private Limited Company",
+    "category": "Biofuel Manufacturer",
+    "pan": "ABCDE1234F",
+    "cin": "U12345MH2020PTC123456",
+    "yearEstablished": "2020",
+    "website": "https://example.com",
+    "address": "Registered office address",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "pincode": "400001",
+    "country": "India",
+    "createdAt": "2026-09-13T10:00:00.000Z",
+    "updatedAt": "2026-09-13T10:00:00.000Z"
+  }
+}
+{
+  "data": {
+    "trustScore": 82,
+    "progress": {
+      "completed": 3,
+      "total": 5
+    },
+    "documents": []
+  }
+}
+Phase 2 architecture decision
+Phase 2 should extend the existing Next.js backend—not introduce another framework—and organize it as:
+Route/controller → service → repository interface → memory/postgres implementation
+Repository selection will remain environment-driven, for example:
+BUYER_PROFILE_REPOSITORY=memory|postgres
+DATABASE_URL=...
+BANK_VERIFICATION_PROVIDER=mock|production-provider
+Passwords and bank-account numbers will not be stored in plaintext. Password changes will go through an authentication-provider interface; bank data will use a tokenized/encrypted provider interface.
+Phase 1 is complete. I’m stopped here awaiting your approval before generating backend code.
+
+
+======
+docker-compose.yml
+
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: uco-sqlserver
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong@Passw0rd"
+
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+volumes:
+  sqlserver-data:

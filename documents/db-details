@@ -1,0 +1,61 @@
+
+PS C:\Users\Asus\Downloads\tucor-bolt> cd backend\
+PS C:\Users\Asus\Downloads\tucor-bolt\backend> docker compose ps
+NAME                 IMAGE                    COMMAND                  SERVICE    CREATED       STATUS                 PORTS
+backend-mailpit-1    axllent/mailpit:latest   "/mailpit"               mailpit    2 hours ago   Up 2 hours (healthy)   0.0.0.0:1025->1025/tcp, [::]:1025->1025/tcp, 0.0.0.0:8025->8025/tcp, [::]:8025->8025/tcp
+backend-postgres-1   postgres:16              "docker-entrypoint.s…"   postgres   2 hours ago   Up 2 hours             0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+PS C:\Users\Asus\Downloads\tucor-bolt\backend> docker exec -it backend-postgres-1 psql -U uco_user -d tucor_dev
+psql (16.14 (Debian 16.14-1.pgdg13+1))
+Type "help" for help.
+
+tucor_dev=# SELECT
+    id,
+    email,
+    role,
+    status,
+    email_verified,
+    created_at
+FROM users
+ORDER BY created_at DESC;
+                  id                  |     email      |  role  | status | email_verified |          created_at
+--------------------------------------+----------------+--------+--------+----------------+-------------------------------
+ 4325646d-1e55-4dd1-bb77-b64df1b6cb7a | abcd@gmail.com | SELLER | ACTIVE | t              | 2026-09-18 11:00:57.071974+00
+(1 row)
+
+tucor_dev=# SELECT
+    user_id,
+    business_name,
+    business_type,
+    gst_number,
+    registration_number,
+    full_name,
+    phone,
+    city,
+    state,
+    pincode,
+    estimated_volume_monthly
+FROM registration_profiles;
+               user_id                |   business_name    | business_type |   gst_number    | registration_number | full_name |   phone    |   city    |   state   | pincode | estimated_volume_monthly
+--------------------------------------+--------------------+---------------+-----------------+---------------------+-----------+------------+-----------+-----------+---------+--------------------------
+ 4325646d-1e55-4dd1-bb77-b64df1b6cb7a | Demo Buyer Company | Hotel         | 27AABCS1429B1ZB | FSS-MH-2024-08812   | test      | 6678976579 | Bengaluru | Karnataka | 400053  | 100–300 L
+(1 row)
+
+tucor_dev=# SELECT
+    user_id,
+    document_type,
+    original_filename,
+    content_type,
+    size_bytes,
+    status,
+    created_at
+FROM registration_documents
+ORDER BY created_at DESC;
+               user_id                |     document_type     |        original_filename         | content_type | size_bytes |     status     |          created_at
+--------------------------------------+-----------------------+----------------------------------+--------------+------------+----------------+-------------------------------
+ 4325646d-1e55-4dd1-bb77-b64df1b6cb7a | BANK_PROOF            | Screenshot 2026-08-23 082629.png | image/png    |      54088 | PENDING_REVIEW | 2026-09-18 11:00:57.869848+00
+ 4325646d-1e55-4dd1-bb77-b64df1b6cb7a | ADDRESS_PROOF         | Screenshot 2026-09-11 183619.png | image/png    |     170597 | PENDING_REVIEW | 2026-09-18 11:00:57.86784+00
+ 4325646d-1e55-4dd1-bb77-b64df1b6cb7a | FSSAI_OR_REGISTRATION | Screenshot 2026-09-11 161835.png | image/png    |      73628 | PENDING_REVIEW | 2026-09-18 11:00:57.86784+00
+ 4325646d-1e55-4dd1-bb77-b64df1b6cb7a | GST                   | Screenshot 2026-08-23 153835.png | image/png    |      10272 | PENDING_REVIEW | 2026-09-18 11:00:57.861077+00
+(4 rows)
+
+tucor_dev=#
