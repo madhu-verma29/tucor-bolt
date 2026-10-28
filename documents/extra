@@ -1,0 +1,35 @@
+$2a$12$J.sLl8z16d1H2r4ZAAtVQOBq1kO/vj/qxB7Ii4BXWjLBkUrySoGqO
+$2a$12$J.sLl8z16d1H2r4ZAAtVQOBq1kO/vj/qxB7Ii4BXWjLBkUrySoGqO
+DATABASE_URL=postgresql://uco_user:uco_user_password@localhost:5433/tucor_dev
+BUYER_PROFILE_REPOSITORY=postgres
+UPDATE "User"
+SET "passwordHash" = '$2a$12$J.sLl8z16d1H2r4ZAAtVQOBq1kO/vj/qxB7Ii4BXWjLBkUrySoGqO'
+WHERE email = 'seller1@tucor.in';
+
+UPDATE "User"
+SET "passwordHash" = '$2a$12$J.sLl8z16d1H2r4ZAAtVQOBq1kO/vj/qxB7Ii4BXWjLBkUrySoGqO'
+WHERE email = 'seller1@tucor.in';
+
+Email:    seller1@tucor.in
+Password: DevPass@123
+
+Pending within Buyer Profile
+These actions are wired through the UI and APIs, but still need production integrations:
+- Authentication and user identity: currently all local requests use demo-buyer. It must be connected to your login/session/JWT system.
+- Password change: currently validates the request through a mock authentication provider but does not change a real password.
+- KYC review: uploads work, but admin approval/rejection, reviewer notes, and verification-status processing are not implemented.
+- Document metadata: document number and expiry exist in the database/API but are not collected by the current upload UI.
+- Document storage: files are currently stored as PostgreSQL BYTEA. Production should normally use S3, Supabase Storage, Azure Blob, etc.
+- Bank verification: bank accounts are stored, but account verification, penny-drop validation, and secure account tokenization require a banking provider.
+- Notification delivery: preferences are saved, but email/SMS/WhatsApp notification services are not connected.
+- Deactivate account enforcement: the account is marked inactive, but authentication middleware does not yet block subsequent access.
+- Delete/deactivate completion UX: the UI does not currently sign the user out or redirect after these operations.
+- Dashboard topbar identity: the top-right name, email, and avatar remain hardcoded as “Arjun”; they are outside the integrated profile component.
+- Optional-field handling: empty Trade Name, CIN, or Website values should be normalized to null before saving.
+
+PS C:\WINDOWS\system32> mvn -version
+The JAVA_HOME environment variable is not defined correctly,
+this environment variable is needed to run this program.
+PS C:\WINDOWS\system32> [Environment]::SetEnvironmentVariable("JAVA_HOME", "C:\Users\Asus\.jdks\ms-21.0.11", "User")
+PS C:\WINDOWS\system32> $env:JAVA_HOME = "C:\Users\Asus\.jdks\ms-21.0.11"
+PS C:\WINDOWS\system32> $env:JAVA_HOME
